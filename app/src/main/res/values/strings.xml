@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">IHC</string>
+    <string name="label_project">Project</string>
+    <string name="label_badge">Badge</string>
+    <string name="label_article_count_item" translatable="false">ITEM</string>
+    <string name="label_article_count_pu" translatable="false">PU</string>
+    <string name="label_article_count_unit" translatable="false">UNIT</string>
+</resources>

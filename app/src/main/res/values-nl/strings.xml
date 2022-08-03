@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">IHC</string>
+    <string name="label_project">Project nederlands</string>
+    <string name="label_badge" translatable="false">Badge nederlands</string>
+</resources>
