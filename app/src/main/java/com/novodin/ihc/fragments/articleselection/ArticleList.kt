@@ -29,7 +29,7 @@ class ArticleList : Fragment() {
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
                               savedInstanceState: Bundle?): View? {
-        val view = inflater.inflate(R.layout.fragment_article_list, container, false)
+        val view = inflater.inflate(R.layout.fragment_shopping_cart, container, false)
 
         // Set the adapter
         if (view is RecyclerView) {

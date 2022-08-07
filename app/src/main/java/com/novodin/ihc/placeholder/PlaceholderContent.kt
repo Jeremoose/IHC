@@ -36,13 +36,13 @@ object PlaceholderContent {
         ARTICLE_LIST.add(article)
     }
 
-    private fun createPlaceholderItem(): Article {
+    fun createPlaceholderItem(): Article {
         val randomId = (0..100).random()
         val randomBarcode = (0..3).random()
         val randomNumber = (0..3).random()
         val randomCount = (0..99).random()
         val randomArticle = (0..5).random()
         val randomQuantityType = (0..2).random()
-        return Article(randomId, BARCODES[randomBarcode], ARTICLES[randomArticle], NUMBER[randomNumber], QUANTITY_TYPE[randomQuantityType], randomCount)
+        return Article(randomId, BARCODES[randomBarcode], ARTICLES[randomArticle], NUMBER[randomNumber], QUANTITY_TYPE[randomQuantityType], 1)
     }
 }

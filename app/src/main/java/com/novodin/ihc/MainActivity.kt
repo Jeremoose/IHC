@@ -7,7 +7,7 @@ import com.android.volley.Request
 import com.android.volley.RequestQueue
 import com.android.volley.toolbox.JsonObjectRequest
 import com.android.volley.toolbox.Volley
-import com.novodin.ihc.fragments.ArticleSelection
+import com.novodin.ihc.fragments.ShoppingCart
 import com.novodin.ihc.fragments.ProjectSelection
 import org.json.JSONException
 import org.json.JSONObject
@@ -21,29 +21,20 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        val projectSelectionFragment = ProjectSelection()
-        val articleSelectionFragment = ArticleSelection()
-
+//        val projectSelectionFragment = ProjectSelection()
+        val shoppingCartFragment = ShoppingCart()
+//
         supportFragmentManager.beginTransaction().apply {
-            replace(R.id.flFragment, projectSelectionFragment)
+            replace(R.id.flShoppingCart, shoppingCartFragment)
             commit()
         }
-
-        val imgbtn = findViewById<ImageButton>(R.id.ibRemove)
-
-        imgbtn.setOnClickListener {
-            supportFragmentManager.beginTransaction().apply {
-                replace(R.id.flFragment, articleSelectionFragment)
-                commit()
-            }
-        }
-
-        requestQueue = Volley.newRequestQueue(this)
-
-        val imgbtn2 = findViewById<ImageButton>(R.id.ibDelete)
-        imgbtn2.setOnClickListener {
-            httpCall()
-        }
+//
+//        requestQueue = Volley.newRequestQueue(this)
+//
+//        val imgbtn2 = findViewById<ImageButton>(R.id.ibDelete)
+//        imgbtn2.setOnClickListener {
+//            httpCall()
+//        }
 
 
     }

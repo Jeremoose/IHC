@@ -4,20 +4,25 @@ import androidx.recyclerview.widget.RecyclerView
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.widget.TextView
+import com.novodin.ihc.R
 
 import com.novodin.ihc.databinding.FragmentArticleBinding
 import com.novodin.ihc.model.Article
 
-/**
- * [RecyclerView.Adapter] that can display a [PlaceholderItem].
- * TODO: Replace the implementation with code for your data type.
- */
 class ArticleRecyclerViewAdapter(
-        private val values: List<Article>)
-    : RecyclerView.Adapter<ArticleRecyclerViewAdapter.ViewHolder>() {
+    private val values: List<Article>
+) : RecyclerView.Adapter<ArticleRecyclerViewAdapter.ViewHolder>() {
+
+    var selectedValuePosition: Int = -1
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-        return ViewHolder(FragmentArticleBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+        return ViewHolder(
+            FragmentArticleBinding.inflate(
+                LayoutInflater.from(parent.context),
+                parent,
+                false
+            )
+        )
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
@@ -27,19 +32,25 @@ class ArticleRecyclerViewAdapter(
         holder.quantityTypeView.text = article.quantityType.toString()
         holder.articleNumberView.text = article.number
 
+        holder.itemView.setOnClickListener {
+            selectedValuePosition = position
+            notifyDataSetChanged()
+        }
+
+        if (position == selectedValuePosition)
+            holder.itemView.setBackgroundColor(holder.itemView.context.getColor(R.color.selected_overlay))
+        else
+            holder.itemView.setBackgroundColor(holder.itemView.context.getColor(R.color.white))
     }
 
     override fun getItemCount(): Int = values.size
 
-    inner class ViewHolder(binding: FragmentArticleBinding) : RecyclerView.ViewHolder(binding.root) {
+    inner class ViewHolder(binding: FragmentArticleBinding) :
+        RecyclerView.ViewHolder(binding.root) {
         val itemCountView: TextView = binding.tvItemCount
         val articleNameView: TextView = binding.tvArticleName
         val quantityTypeView: TextView = binding.tvQuantityType
         val articleNumberView: TextView = binding.tvArticleNumber
-
-        override fun toString(): String {
-            return super.toString() + " '" + articleNameView.text + "'"
-        }
     }
 
 }
