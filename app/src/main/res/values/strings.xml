@@ -5,4 +5,6 @@
     <string name="label_article_count_item" translatable="false">ITEM</string>
     <string name="label_article_count_pu" translatable="false">PU</string>
     <string name="label_article_count_unit" translatable="false">UNIT</string>
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
 </resources>

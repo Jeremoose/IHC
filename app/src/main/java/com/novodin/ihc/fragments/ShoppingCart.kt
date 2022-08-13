@@ -1,16 +1,19 @@
 package com.novodin.ihc.fragments
 
+import android.app.Activity
 import android.os.Bundle
 import androidx.fragment.app.Fragment
 import android.view.View
 import android.widget.ImageButton
 import android.widget.TextView
+import android.widget.Toast
 import androidx.recyclerview.widget.RecyclerView
 import com.novodin.ihc.R
 import com.novodin.ihc.adapters.ArticleRecyclerViewAdapter
 import com.novodin.ihc.model.Article
 import com.novodin.ihc.model.QuantityType
 import com.novodin.ihc.placeholder.PlaceholderContent
+import com.novodin.ihc.scanner.BarcodeScanner
 
 class ShoppingCart : Fragment(R.layout.fragment_shopping_cart) {
     // Shopping cart variables
@@ -29,6 +32,9 @@ class ShoppingCart : Fragment(R.layout.fragment_shopping_cart) {
     private lateinit var ibStop: ImageButton
     private lateinit var ibAdd: ImageButton
 
+    // Barcode
+    private lateinit var barcodeScanner: BarcodeScanner
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -36,6 +42,8 @@ class ShoppingCart : Fragment(R.layout.fragment_shopping_cart) {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
         // init view elements
         rvArticleList = view.findViewById(R.id.rvArticleList) as RecyclerView
         tvItemCount = view.findViewById(R.id.tvItemCount) as TextView
@@ -47,40 +55,41 @@ class ShoppingCart : Fragment(R.layout.fragment_shopping_cart) {
         ibStop = view.findViewById(R.id.ibStop) as ImageButton
         ibAdd = view.findViewById(R.id.ibAdd) as ImageButton
 
+        tvItemCount.text = itemCount.toString()
+        tvPUCount.text = puCount.toString()
+        tvUnitCount.text = unitCount.toString()
+
         rvArticleList.adapter = ArticleRecyclerViewAdapter(articleList)
 
         ibAdd.setOnClickListener {
-            val article =
-                articleList[(rvArticleList.adapter as ArticleRecyclerViewAdapter).selectedValuePosition]
+            val adapter = rvArticleList.adapter as ArticleRecyclerViewAdapter
+            val pos = adapter.selectedValuePosition
+            if (pos == -1) return@setOnClickListener
+
+            val article = articleList[pos]
             article.count++
             when (article.quantityType) {
                 QuantityType.ITEM -> tvItemCount.text = (++itemCount).toString()
                 QuantityType.PU -> tvPUCount.text = (++puCount).toString()
                 QuantityType.UNIT -> tvUnitCount.text = (++unitCount).toString()
             }
-            (rvArticleList.adapter as ArticleRecyclerViewAdapter).notifyDataSetChanged()
+            adapter.notifyItemChanged(pos)
         }
-
-        tvItemCount.text = itemCount.toString()
-        tvPUCount.text = puCount.toString()
-        tvUnitCount.text = unitCount.toString()
 
         ibRemove.setOnClickListener {
             val adapter = rvArticleList.adapter as ArticleRecyclerViewAdapter
-            val position = adapter.selectedValuePosition
-            if (position == -1) {
-                return@setOnClickListener
-            }
+            val pos = adapter.selectedValuePosition
+            if (pos == -1) return@setOnClickListener
 
-            val article = articleList[position]
+            val article = articleList[pos]
             if (article.count == 1) {
                 // Remove article from list
-                articleList.removeAt(position)
+                articleList.removeAt(pos)
                 adapter.selectedValuePosition = -1
-                adapter.notifyDataSetChanged()
+                adapter.notifyItemRemoved(pos)
             } else {
                 article.count--
-                adapter.notifyDataSetChanged()
+                adapter.notifyItemChanged(pos)
             }
             when (article.quantityType) {
                 QuantityType.ITEM -> tvItemCount.text = (--itemCount).toString()
@@ -89,18 +98,25 @@ class ShoppingCart : Fragment(R.layout.fragment_shopping_cart) {
             }
         }
 
-        ibStop.setOnClickListener {
-            val article = PlaceholderContent.createPlaceholderItem()
+        barcodeScanner = BarcodeScanner(requireContext(), {
+            //todo make async
+            val article = PlaceholderContent.createPlaceholderItem(it)
             articleList.add(article)
             when (article.quantityType) {
                 QuantityType.ITEM -> tvItemCount.text = (++itemCount).toString()
                 QuantityType.PU -> tvPUCount.text = (++puCount).toString()
                 QuantityType.UNIT -> tvUnitCount.text = (++unitCount).toString()
             }
-            (rvArticleList.adapter as ArticleRecyclerViewAdapter).notifyDataSetChanged()
-        }
-        super.onViewCreated(view, savedInstanceState)
+            (requireContext() as Activity).runOnUiThread {
+                (rvArticleList.adapter as ArticleRecyclerViewAdapter).notifyItemInserted(articleList.size - 1)
+            }
+
+        }, {
+            (requireContext() as Activity).runOnUiThread {
+                Toast.makeText(requireContext(),
+                    it,
+                    Toast.LENGTH_LONG).show()
+            }
+        })
     }
-
-
 }

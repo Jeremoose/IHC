@@ -4,6 +4,11 @@
     package="com.novodin.ihc" >
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="com.symbol.emdk.permission.EMDK" />
+    <queries>
+        <package android:name="com.symbol.emdk.emdkservice" />
+    </queries>
+
 
     <application
         android:icon="@mipmap/ic_launcher"
@@ -13,6 +18,7 @@
         android:theme="@style/Theme.IHC"
         tools:targetApi="31"
         android:usesCleartextTraffic="true">
+        <uses-library android:name="com.symbol.emdk" />
         <activity
             android:name=".MainActivity"
             android:exported="true" >

@@ -9,6 +9,7 @@ import com.android.volley.toolbox.JsonObjectRequest
 import com.android.volley.toolbox.Volley
 import com.novodin.ihc.fragments.ShoppingCart
 import com.novodin.ihc.fragments.ProjectSelection
+import com.novodin.ihc.scanner.ScannerTestFragment
 import org.json.JSONException
 import org.json.JSONObject
 
@@ -22,10 +23,10 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
 //        val projectSelectionFragment = ProjectSelection()
-        val shoppingCartFragment = ShoppingCart()
+
 //
         supportFragmentManager.beginTransaction().apply {
-            replace(R.id.flShoppingCart, shoppingCartFragment)
+            replace(R.id.flShoppingCart, ShoppingCart())
             commit()
         }
 //
@@ -52,8 +53,7 @@ class MainActivity : AppCompatActivity() {
                     e.printStackTrace()
                 }
             },
-            { error -> error.printStackTrace() })
-        {
+            { error -> error.printStackTrace() }) {
             override fun getHeaders(): MutableMap<String, String> {
                 var headers = hashMapOf<String, String>()
                 headers["x-api-key"] = "ZKbaStU4C2YcNEfuLLSbgeq8vKXgt994"
