@@ -1,4 +1,4 @@
-package com.novodin.ihc.scanner
+package com.novodin.ihc.zebra
 
 import android.content.Context
 import com.symbol.emdk.EMDKManager
@@ -35,9 +35,7 @@ class BarcodeScanner(
                 val scanData = scanDataCollection.scanData
                 var dataStr = ""
                 for (data in scanData) {
-                    val barcodeData = data.data
-                    val labelType = data.labelType
-                    dataStr = "$barcodeData $labelType"
+                    dataStr = data.data
                 }
                 invoke(dataStr)
             }

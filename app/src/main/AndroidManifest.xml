@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="com.novodin.ihc" >
+    package="com.novodin.ihc">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="com.symbol.emdk.permission.EMDK" />
+
     <queries>
         <package android:name="com.symbol.emdk.emdkservice" />
     </queries>
-
 
     <application
         android:icon="@mipmap/ic_launcher"
@@ -16,12 +16,26 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.IHC"
-        tools:targetApi="31"
-        android:usesCleartextTraffic="true">
+        android:usesCleartextTraffic="true"
+        tools:targetApi="31">
+        <activity
+            android:name=".FullscreenActivity"
+            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:exported="false"
+            android:label="@string/title_activity_fullscreen"
+            android:theme="@style/Theme.IHC.Fullscreen" />
+        <activity
+            android:name=".FullscreenActivitytest"
+            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:exported="false"
+            android:label="@string/title_activity_fullscreen_activitytest"
+            android:theme="@style/Theme.IHC.Fullscreen" />
+
         <uses-library android:name="com.symbol.emdk" />
+
         <activity
             android:name=".MainActivity"
-            android:exported="true" >
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 

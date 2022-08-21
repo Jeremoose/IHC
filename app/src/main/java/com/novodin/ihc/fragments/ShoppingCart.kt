@@ -1,6 +1,7 @@
 package com.novodin.ihc.fragments
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.os.Bundle
 import androidx.fragment.app.Fragment
 import android.view.View
@@ -12,15 +13,21 @@ import com.novodin.ihc.R
 import com.novodin.ihc.adapters.ArticleRecyclerViewAdapter
 import com.novodin.ihc.model.Article
 import com.novodin.ihc.model.QuantityType
-import com.novodin.ihc.placeholder.PlaceholderContent
-import com.novodin.ihc.scanner.BarcodeScanner
+import com.novodin.ihc.network.Backend
+import com.novodin.ihc.zebra.BarcodeScanner
+import kotlinx.coroutines.*
 
-class ShoppingCart : Fragment(R.layout.fragment_shopping_cart) {
+class ShoppingCart(
+    private var projectId: Int,
+    private var accessToken: String,
+    private var backend: Backend,
+) : Fragment(R.layout.fragment_shopping_cart) {
     // Shopping cart variables
     private val articleList: MutableList<Article> = ArrayList()
     private var itemCount: Int = 0
     private var puCount: Int = 0
     private var unitCount: Int = 0
+    private var cartId: Int = 0
 
     // View elements
     private lateinit var rvArticleList: RecyclerView
@@ -38,7 +45,15 @@ class ShoppingCart : Fragment(R.layout.fragment_shopping_cart) {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // TODO init shopping cart API call
+        CoroutineScope(Dispatchers.IO).launch {
+            val cartIdResponse = backend.createCart(projectId, accessToken)
+            cartId = cartIdResponse!!.getInt("id")
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        barcodeScanner.onClosed()
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -64,9 +79,21 @@ class ShoppingCart : Fragment(R.layout.fragment_shopping_cart) {
         ibAdd.setOnClickListener {
             val adapter = rvArticleList.adapter as ArticleRecyclerViewAdapter
             val pos = adapter.selectedValuePosition
-            if (pos == -1) return@setOnClickListener
+            if (pos == -1) return@setOnClickListener // return if nothing is selected
 
             val article = articleList[pos]
+
+            // add item in backend
+            CoroutineScope(Dispatchers.IO).launch {
+                backend.addItem(cartId,
+                    article.barcode,
+                    accessToken
+                ) {
+                    Toast.makeText(requireContext(), "Unkown barcode", Toast.LENGTH_LONG).show()
+                }
+            }
+
+            // add item in UI
             article.count++
             when (article.quantityType) {
                 QuantityType.ITEM -> tvItemCount.text = (++itemCount).toString()
@@ -79,9 +106,18 @@ class ShoppingCart : Fragment(R.layout.fragment_shopping_cart) {
         ibRemove.setOnClickListener {
             val adapter = rvArticleList.adapter as ArticleRecyclerViewAdapter
             val pos = adapter.selectedValuePosition
-            if (pos == -1) return@setOnClickListener
+            if (pos == -1) return@setOnClickListener // return if nothing is selected
 
             val article = articleList[pos]
+
+            // remove item in backend
+            CoroutineScope(Dispatchers.IO).launch {
+                backend.removeItem(cartId,
+                    article.id,
+                    accessToken)
+            }
+
+            // remove item in UI
             if (article.count == 1) {
                 // Remove article from list
                 articleList.removeAt(pos)
@@ -98,25 +134,78 @@ class ShoppingCart : Fragment(R.layout.fragment_shopping_cart) {
             }
         }
 
+        ibStop.setOnClickListener {
+            val builder = AlertDialog.Builder(requireContext())
+            builder.setMessage("What would you like to do?")
+                .setCancelable(false)
+                .setPositiveButton("Verify") { _, _ ->
+                    CoroutineScope(Dispatchers.IO).launch {
+                        backend.approve(cartId, accessToken)
+                    }
+                    parentFragmentManager.beginTransaction().apply {
+                        replace(R.id.flFragment, ProjectSelection())
+                        commit()
+                    }
+                }
+                .setNegativeButton("Continue") { dialog, _ ->
+                    dialog.dismiss()
+                }
+            val alert = builder.create()
+            alert.show()
+        }
+
         barcodeScanner = BarcodeScanner(requireContext(), {
-            //todo make async
-            val article = PlaceholderContent.createPlaceholderItem(it)
-            articleList.add(article)
-            when (article.quantityType) {
-                QuantityType.ITEM -> tvItemCount.text = (++itemCount).toString()
-                QuantityType.PU -> tvPUCount.text = (++puCount).toString()
-                QuantityType.UNIT -> tvUnitCount.text = (++unitCount).toString()
+            if (cartId == 0) {
+                Toast.makeText(requireContext(),
+                    "not finished initializing...",
+                    Toast.LENGTH_LONG).show()
+                return@BarcodeScanner
             }
-            (requireContext() as Activity).runOnUiThread {
-                (rvArticleList.adapter as ArticleRecyclerViewAdapter).notifyItemInserted(articleList.size - 1)
+            CoroutineScope(Dispatchers.IO).launch {
+                val item = backend.addItem(cartId, it, accessToken) {
+                    Toast.makeText(requireContext(), "Unknown barcode", Toast.LENGTH_LONG).show()
+                }
+
+
+                val article = Article(item!!.getInt("id"),
+                    it,
+                    item.getString("name"),
+                    item.getString("number"),
+                    QuantityType.fromInt(item.getInt("cat")),
+                    1)
+
+                val adapter = rvArticleList.adapter as ArticleRecyclerViewAdapter
+
+                var alreadyExisted = false
+                for ((i, art) in articleList.withIndex()) {
+                    if (art.id == article.id) {
+                        alreadyExisted = true
+                        articleList[i].count++
+                        (requireContext() as Activity).runOnUiThread {
+                            adapter.notifyItemChanged(i)
+                        }
+                        break
+                    }
+                }
+
+                if (!alreadyExisted) {
+                    articleList.add(article)
+                    (requireContext() as Activity).runOnUiThread {
+                        adapter.notifyItemInserted(articleList.size - 1)
+                    }
+                }
+
+                when (article.quantityType) {
+                    QuantityType.ITEM -> tvItemCount.text = (++itemCount).toString()
+                    QuantityType.PU -> tvPUCount.text = (++puCount).toString()
+                    QuantityType.UNIT -> tvUnitCount.text = (++unitCount).toString()
+                }
             }
 
-        }, {
-            (requireContext() as Activity).runOnUiThread {
-                Toast.makeText(requireContext(),
-                    it,
-                    Toast.LENGTH_LONG).show()
-            }
-        })
+        },
+            {
+                // status
+                println(it)
+            })
     }
 }
