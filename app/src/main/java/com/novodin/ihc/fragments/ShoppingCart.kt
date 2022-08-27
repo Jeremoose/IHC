@@ -8,6 +8,7 @@ import android.view.View
 import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
+import androidx.fragment.app.setFragmentResultListener
 import androidx.recyclerview.widget.RecyclerView
 import com.novodin.ihc.R
 import com.novodin.ihc.adapters.ArticleRecyclerViewAdapter
@@ -16,6 +17,8 @@ import com.novodin.ihc.model.QuantityType
 import com.novodin.ihc.network.Backend
 import com.novodin.ihc.zebra.BarcodeScanner
 import kotlinx.coroutines.*
+import org.json.JSONArray
+import org.json.JSONObject
 
 class ShoppingCart(
     private var projectId: Int,
@@ -28,6 +31,7 @@ class ShoppingCart(
     private var puCount: Int = 0
     private var unitCount: Int = 0
     private var cartId: Int = 0
+    private var approvalState: Boolean = false;
 
     // View elements
     private lateinit var rvArticleList: RecyclerView
@@ -45,6 +49,24 @@ class ShoppingCart(
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        setFragmentResultListener("approveLogin") { requestKey, bundle ->
+            // We use a String here, but any type that can be put in a Bundle is supported
+            val success = bundle.getBoolean("success")
+            val accessToken = bundle.getString("accessToken")
+
+            if (!success) {
+                Toast.makeText(requireContext(), "Not an approver badge", Toast.LENGTH_LONG)
+                    .show()
+                return@setFragmentResultListener
+            }
+
+            try {
+                this.accessToken = accessToken!!
+                approvalState = true
+            } catch (e: NullPointerException) {
+                println("something went wrong $e")
+            }
+        }
         CoroutineScope(Dispatchers.IO).launch {
             val cartIdResponse = backend.createCart(projectId, accessToken)
             cartId = cartIdResponse!!.getInt("id")
@@ -135,23 +157,40 @@ class ShoppingCart(
         }
 
         ibStop.setOnClickListener {
-            val builder = AlertDialog.Builder(requireContext())
-            builder.setMessage("What would you like to do?")
-                .setCancelable(false)
-                .setPositiveButton("Verify") { _, _ ->
-                    CoroutineScope(Dispatchers.IO).launch {
-                        backend.approve(cartId, accessToken)
+            if (approvalState) {
+                val builder = AlertDialog.Builder(requireContext())
+                builder.setMessage("Approve?")
+                    .setCancelable(false)
+                    .setPositiveButton("Yes") { _, _ ->
+                        CoroutineScope(Dispatchers.IO).launch {
+                            backend.approve(cartId, accessToken, JSONArray(articleList))
+                        }
+                        requireActivity().supportFragmentManager.popBackStack()
                     }
-                    parentFragmentManager.beginTransaction().apply {
-                        replace(R.id.flFragment, ProjectSelection())
-                        commit()
+                    .setNegativeButton("No") { dialog, _ ->
+                        // TODO handler for unapproved
+                        dialog.dismiss()
                     }
-                }
-                .setNegativeButton("Continue") { dialog, _ ->
-                    dialog.dismiss()
-                }
-            val alert = builder.create()
-            alert.show()
+                val alert = builder.create()
+                alert.show()
+            } else {
+                val builder = AlertDialog.Builder(requireContext())
+                builder.setMessage("What would you like to do?")
+                    .setCancelable(false)
+                    .setPositiveButton("Verify") { _, _ ->
+                        parentFragmentManager.beginTransaction().apply {
+                            replace(R.id.flFragment, Approval())
+                            addToBackStack("")
+                            barcodeScanner.onClosed()
+                            commit()
+                        }
+                    }
+                    .setNegativeButton("Continue") { dialog, _ ->
+                        dialog.dismiss()
+                    }
+                val alert = builder.create()
+                alert.show()
+            }
         }
 
         barcodeScanner = BarcodeScanner(requireContext(), {

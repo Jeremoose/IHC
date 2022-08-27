@@ -6,11 +6,11 @@ import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.view.WindowManager
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import android.widget.*
 import androidx.fragment.app.Fragment
-import com.novodin.ihc.zebra.Cradle
 import com.novodin.ihc.R
 import com.novodin.ihc.model.Project
 import com.novodin.ihc.network.Backend
@@ -25,7 +25,6 @@ class ProjectSelection() : Fragment(R.layout.fragment_project_selection) {
     private lateinit var etBadgeNumber: EditText
     private lateinit var sProjects: Spinner
     private lateinit var ibAdd: ImageButton
-    private lateinit var bUnlock: Button
 
     private lateinit var backend: Backend
     private var accessToken: String = ""
@@ -46,12 +45,6 @@ class ProjectSelection() : Fragment(R.layout.fragment_project_selection) {
         etBadgeNumber = view.findViewById(R.id.etBadgeNumber)
         sProjects = view.findViewById(R.id.sProjects)
         ibAdd = view.findViewById(R.id.ibAdd)
-        bUnlock = view.findViewById(R.id.bUnlock)
-        val cradle = Cradle(requireContext())
-
-        bUnlock.setOnClickListener {
-            cradle.unlock()
-        }
 
         sProjects.adapter = ArrayAdapter<String>(requireContext(),
             android.R.layout.simple_dropdown_item_1line,
@@ -126,9 +119,8 @@ class ProjectSelection() : Fragment(R.layout.fragment_project_selection) {
                     .setNegativeButton("No") { dialog, _ ->
                         dialog.dismiss()
                     }
-                val alert = builder.create()
-                alert.show()
-
+                val dialog = builder.create()
+                dialog.show()
             }
         }
 

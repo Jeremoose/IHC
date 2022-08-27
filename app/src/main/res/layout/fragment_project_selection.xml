@@ -115,12 +115,4 @@
         app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="@+id/etBadgeNumber" />
 
-    <Button
-        android:id="@+id/bUnlock"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="unlock cradle"
-        app:layout_constraintStart_toStartOf="@+id/etBadgeNumber"
-        app:layout_constraintTop_toBottomOf="@+id/etBadgeNumber" />
 </androidx.constraintlayout.widget.ConstraintLayout>

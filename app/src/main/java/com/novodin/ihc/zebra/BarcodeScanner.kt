@@ -43,10 +43,9 @@ class BarcodeScanner(
     }
 
     override fun onClosed() {
-        if (emdkManager != null) {
-            emdkManager!!.release()
-            emdkManager = null
-        }
+        emdkManager?.release()
+        emdkManager = null
+
         statusCallback.invoke("EMDK closed unexpectedly! Please close and restart the application")
     }
 
