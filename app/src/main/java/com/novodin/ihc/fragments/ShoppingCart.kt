@@ -5,6 +5,7 @@ import android.app.AlertDialog
 import android.os.Bundle
 import androidx.fragment.app.Fragment
 import android.view.View
+import android.view.WindowManager
 import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
@@ -18,9 +19,9 @@ import com.novodin.ihc.network.Backend
 import com.novodin.ihc.zebra.BarcodeScanner
 import kotlinx.coroutines.*
 import org.json.JSONArray
-import org.json.JSONObject
 
 class ShoppingCart(
+    private var badge: String,
     private var projectId: Int,
     private var accessToken: String,
     private var backend: Backend,
@@ -164,6 +165,8 @@ class ShoppingCart(
                     .setPositiveButton("Yes") { _, _ ->
                         CoroutineScope(Dispatchers.IO).launch {
                             backend.approve(cartId, accessToken, JSONArray(articleList))
+                            backend.loginRelease(badge, accessToken)
+
                         }
                         requireActivity().supportFragmentManager.popBackStack()
                     }
@@ -172,6 +175,8 @@ class ShoppingCart(
                         dialog.dismiss()
                     }
                 val alert = builder.create()
+                alert.window?.setFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
                 alert.show()
             } else {
                 val builder = AlertDialog.Builder(requireContext())
@@ -179,7 +184,10 @@ class ShoppingCart(
                     .setCancelable(false)
                     .setPositiveButton("Verify") { _, _ ->
                         parentFragmentManager.beginTransaction().apply {
-                            replace(R.id.flFragment, Approval())
+                            CoroutineScope(Dispatchers.IO).launch {
+                                backend.loginRelease(badge, accessToken)
+                            }
+                            replace(R.id.flFragment, Approval(backend))
                             addToBackStack("")
                             barcodeScanner.onClosed()
                             commit()
@@ -189,6 +197,8 @@ class ShoppingCart(
                         dialog.dismiss()
                     }
                 val alert = builder.create()
+                alert.window?.setFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
                 alert.show()
             }
         }
@@ -241,10 +251,10 @@ class ShoppingCart(
                 }
             }
 
-        },
-            {
-                // status
-                println(it)
-            })
+        }
+        ) {
+            // status
+            println(it)
+        }
     }
 }

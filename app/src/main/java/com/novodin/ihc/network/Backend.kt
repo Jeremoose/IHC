@@ -34,10 +34,42 @@ class Backend(context: Context, private val baseURL: String) {
         )
     }
 
+    suspend fun pollLogin(errorListener: Response.ErrorListener): JSONObject? {
+        return runJSONObjectRequest(Request.Method.GET,
+            "/login/identity",
+            null,
+            errorListener
+        )
+    }
+
+    suspend fun pollApprover(errorListener: Response.ErrorListener): JSONObject? {
+        return runJSONObjectRequest(Request.Method.GET,
+            "/login/approver",
+            null,
+            errorListener
+        )
+    }
+
     suspend fun createCart(projectId: Int, bearerToken: String): JSONObject? {
         return runJSONObjectRequest(Request.Method.POST,
             "/api/cart",
             JSONObject("{\"projectId\":$projectId}"),
+            { error -> error.printStackTrace() },
+            hashMapOf<String, String>("Authorization" to "Bearer $bearerToken"))
+    }
+
+    suspend fun packingSlip(number: String, bearerToken: String): JSONObject? {
+        return runJSONObjectRequest(Request.Method.POST,
+            "/api/filler/packingslip/${number}",
+            null,
+            { error -> error.printStackTrace() },
+            hashMapOf<String, String>("Authorization" to "Bearer $bearerToken"))
+    }
+
+    suspend fun loginRelease(badge: String, bearerToken: String): JSONObject? {
+        return runJSONObjectRequest(Request.Method.POST,
+            "/login/release",
+            JSONObject("{\"badge\":\"$badge\"}"),
             { error -> error.printStackTrace() },
             hashMapOf<String, String>("Authorization" to "Bearer $bearerToken"))
     }
@@ -81,6 +113,32 @@ class Backend(context: Context, private val baseURL: String) {
             "/api/project",
             null,
             { error -> error.printStackTrace() },
+            hashMapOf<String, String>("Authorization" to "Bearer $bearerToken"))
+    }
+
+    suspend fun getFillerItem(
+        barcode: String,
+        bearerToken: String,
+        errorListener: Response.ErrorListener,
+    ): JSONObject? {
+        return runJSONObjectRequest(Request.Method.GET,
+            "/api/filler/item/${barcode}",
+            null,
+            errorListener,
+            hashMapOf<String, String>("Authorization" to "Bearer $bearerToken"))
+    }
+
+    suspend fun setFillerItem(
+        barcode: String,
+        amount: String,
+        bearerToken: String,
+        errorListener: Response.ErrorListener,
+    ): JSONObject? {
+        return runJSONObjectRequest(Request.Method.PUT,
+            "/api/filler/item",
+//            JSONObject("{\"barcode\": \"$barcode\",\"amount\": $amount}"),
+            JSONObject("""{"barcode": "$barcode", "amount": $amount}"""),
+            errorListener,
             hashMapOf<String, String>("Authorization" to "Bearer $bearerToken"))
     }
 

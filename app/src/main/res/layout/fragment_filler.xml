@@ -1,14 +1,208 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/frameLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".fragments.Filler">
 
-    <!-- TODO: Update blank fragment layout -->
-    <TextView
+    <LinearLayout
+        android:id="@+id/llLabelCurrentArticle"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:text="@string/hello_blank_fragment" />
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
 
-</FrameLayout>
+        <TextView
+            android:id="@+id/tvLabelItemCount"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_margin="@dimen/text_margin"
+            android:layout_weight="0.1"
+            android:text="#"
+            android:textAlignment="viewStart"
+            android:textAppearance="?attr/textAppearanceListItem"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tvLabelArticleName"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="16dp"
+            android:layout_marginTop="16dp"
+            android:layout_weight=".7"
+            android:text="Article"
+            android:textAlignment="viewStart"
+            android:textAppearance="?attr/textAppearanceListItem"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/tvLabelQuantityType"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_margin="@dimen/text_margin"
+            android:layout_weight=".2"
+            android:text="Type"
+            android:textAlignment="viewStart"
+            android:textAppearance="?attr/textAppearanceListItem"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/llCurrentArticle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/llLabelCurrentArticle">
+
+        <TextView
+            android:id="@+id/tvItemCount"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="16dp"
+            android:layout_marginRight="16dp"
+            android:layout_weight="0.1"
+            android:textAppearance="?attr/textAppearanceListItem"
+            android:textStyle="bold" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="0.7"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tvArticleName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="8dp"
+                android:textAppearance="?attr/textAppearanceListItem" />
+
+            <TextView
+                android:id="@+id/tvArticleNumber"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginLeft="8dp"
+                android:layout_marginBottom="8dp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tvQuantityType"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="16dp"
+            android:layout_marginRight="16dp"
+            android:layout_weight="0.2"
+            android:textAlignment="textEnd"
+            android:textAppearance="?attr/textAppearanceListItem"
+            android:textStyle="italic" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/tvLabelAdding"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="32dp"
+        android:layout_marginBottom="32dp"
+        android:text="Adding"
+        android:textAppearance="@style/TextAppearance.AppCompat.Large"
+        app:layout_constraintBottom_toTopOf="@+id/tvLabelNewTotal"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <TextView
+        android:id="@+id/tvAdding"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="32dp"
+        android:textSize="34sp"
+        app:layout_constraintBottom_toBottomOf="@+id/tvLabelAdding"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/tvLabelAdding" />
+
+    <TextView
+        android:id="@+id/tvLabelNewTotal"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="32dp"
+        android:layout_marginBottom="64dp"
+        android:text="New total"
+        android:textAppearance="@style/TextAppearance.AppCompat.Large"
+        app:layout_constraintBottom_toTopOf="@id/llButtons"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <TextView
+        android:id="@+id/tvNewTotal"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="32dp"
+        android:textSize="34sp"
+        app:layout_constraintBottom_toBottomOf="@+id/tvLabelNewTotal"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/tvLabelNewTotal" />
+
+    <LinearLayout
+        android:id="@+id/llButtons"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="#2DB0E8"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <ImageButton
+            android:id="@+id/ibRemove"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="#00FFFFFF"
+            android:padding="8dp"
+            android:scaleType="fitCenter"
+            android:scaleX="0.6"
+            android:scaleY="0.6"
+            app:srcCompat="@drawable/ic_minus"
+            app:tint="#FFFFFFFF" />
+
+        <ImageButton
+            android:id="@+id/ibDelete"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="#00FFFFFF"
+            android:padding="8dp"
+            android:scaleType="fitCenter"
+            android:scaleX="0.6"
+            android:scaleY="0.6"
+            app:srcCompat="@drawable/ic_arrow_back"
+            app:tint="#FFFFFFFF" />
+
+        <ImageButton
+            android:id="@+id/ibStop"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="#00FFFFFF"
+            android:padding="8dp"
+            android:scaleType="fitCenter"
+            android:scaleX="0.6"
+            android:scaleY="0.6"
+            app:srcCompat="@drawable/ic_cancel"
+            app:tint="#FFFFFFFF" />
+
+        <ImageButton
+            android:id="@+id/ibAdd"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="#00FFFFFF"
+            android:padding="8dp"
+            android:scaleType="fitCenter"
+            android:scaleX="0.6"
+            android:scaleY="0.6"
+            app:srcCompat="@drawable/ic_plus"
+            app:tint="#FFFFFFFF" />
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

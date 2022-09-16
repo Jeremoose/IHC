@@ -28,7 +28,7 @@ class MainActivity : AppCompatActivity() {
 
 
         supportFragmentManager.beginTransaction().apply {
-            replace(R.id.flFragment, ProjectSelection())
+            replace(R.id.flFragment, StandbyScreen())
             commit()
         }
     }

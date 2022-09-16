@@ -26,8 +26,8 @@ class Cradle(context: Context) : EMDKListener {
 
         try {
             if (!personalShopper.cradle.isEnabled) personalShopper.cradle.enable()
-            val ledFlashInfo = CradleLedFlashInfo(50, 50, true)
-            val result = personalShopper.cradle.unlock(15, ledFlashInfo)
+            val ledFlashInfo = CradleLedFlashInfo(100, 500, true)
+            val result = personalShopper.cradle.unlock(30, ledFlashInfo) // 30 seconds
 
             return result == CradleResults.SUCCESS
         } catch (e: CradleException) {
