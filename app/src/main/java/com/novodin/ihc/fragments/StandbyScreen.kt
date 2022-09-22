@@ -5,9 +5,13 @@ import android.app.AlertDialog
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.text.InputType
 import android.view.View
 import android.view.WindowManager
+import android.widget.Button
+import android.widget.EditText
 import android.widget.ImageView
+import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.novodin.ihc.R
@@ -20,26 +24,71 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONException
+import org.w3c.dom.Text
 
 
 class StandbyScreen : Fragment(R.layout.fragment_standby_screen) {
     private lateinit var ivStandby: ImageView
+    private lateinit var bSetIP: Button
+    private lateinit var tvIP: TextView
+
     private lateinit var backend: Backend
     private lateinit var cradle: Cradle
 
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var runnable: Runnable
 
+    private var ipAddress = "192.168.103.160"
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         cradle = Cradle(requireContext())
-        backend = Backend(requireContext(), "http://84.105.247.238:3001")
+        backend = Backend(requireContext(), "http://${ipAddress}:3001")
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         ivStandby = view.findViewById(R.id.ivStandby) as ImageView
         ivStandby.setImageResource(R.drawable.ic_standby_screen)
+
+        tvIP = view.findViewById(R.id.tvIP)
+        tvIP.text = ipAddress
+
+        bSetIP = view.findViewById(R.id.bSetIP) as Button
+        bSetIP.setOnClickListener {
+            val builder = AlertDialog.Builder(requireContext())
+            builder.setTitle("Set IP")
+
+            // Set up the input
+
+            // Set up the input
+            val input = EditText(requireContext())
+            // Specify the type of input expected; this, for example, sets the input as a password, and will mask the text
+            // Specify the type of input expected; this, for example, sets the input as a password, and will mask the text
+            input.inputType = InputType.TYPE_CLASS_TEXT
+            builder.setView(input)
+
+            // Set up the buttons
+
+            // Set up the buttons
+            builder.setPositiveButton("OK"
+            ) { _, _ ->
+                ipAddress = input.text.toString()
+                backend = Backend(requireContext(), "http://${ipAddress}:3001")
+                (requireContext() as Activity).runOnUiThread {
+                    tvIP.text = ipAddress
+                }
+            }
+            builder.setNegativeButton("Cancel"
+            ) { dialog, _ -> dialog.cancel() }
+
+            builder.show()
+
+//            val alert = builder.create()
+//            alert.window?.setFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+//                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
+//            alert.show()
+        }
 
         val delay = 1000 // 1000 milliseconds == 1 second
 

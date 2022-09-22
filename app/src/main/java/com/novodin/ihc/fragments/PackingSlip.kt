@@ -1,5 +1,6 @@
 package com.novodin.ihc.fragments
 
+import android.app.Activity
 import android.os.Bundle
 import androidx.fragment.app.Fragment
 import android.view.View
@@ -44,9 +45,17 @@ class PackingSlip(
             // add item in backend
             CoroutineScope(Dispatchers.IO).launch {
                 backend.packingSlip(packingSlipListItem.number, accessToken)
+                (requireContext() as Activity).runOnUiThread {
+                    Toast.makeText(requireContext(),
+                        "Filled stock from packing slip ${packingSlipListItem.number}",
+                        Toast.LENGTH_LONG)
+                        .show()
+                }
             }
+            packingSlipItemList.removeAt(pos)
 
             adapter.notifyItemChanged(pos)
+
         }
 
     }

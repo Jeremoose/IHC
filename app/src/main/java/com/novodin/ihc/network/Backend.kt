@@ -60,8 +60,8 @@ class Backend(context: Context, private val baseURL: String) {
 
     suspend fun packingSlip(number: String, bearerToken: String): JSONObject? {
         return runJSONObjectRequest(Request.Method.POST,
-            "/api/filler/packingslip/${number}",
-            null,
+            "/api/filler/packingslip",
+            JSONObject("{\"number\":\"${number}\"}"),
             { error -> error.printStackTrace() },
             hashMapOf<String, String>("Authorization" to "Bearer $bearerToken"))
     }

@@ -43,6 +43,7 @@ class BarcodeScanner(
     }
 
     override fun onClosed() {
+        deInitScanner()
         emdkManager?.release()
         emdkManager = null
 
@@ -116,7 +117,9 @@ class BarcodeScanner(
     }
 
     private fun deInitScanner() {
-        scanner!!.release()
+        if (scanner != null) {
+            scanner!!.release()
+        }
         scanner = null
     }
 

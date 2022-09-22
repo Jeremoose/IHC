@@ -168,6 +168,7 @@ class ShoppingCart(
                             backend.loginRelease(badge, accessToken)
 
                         }
+                        barcodeScanner.onClosed()
                         requireActivity().supportFragmentManager.popBackStack()
                     }
                     .setNegativeButton("No") { dialog, _ ->

@@ -85,6 +85,7 @@ class Filler(
             builder.setMessage("Are you sure you want to stop?")
                 .setCancelable(false)
                 .setPositiveButton("Yes") { _, _ ->
+                    scanTimeoutHandler.removeCallbacks(scanTimeout)
                     CoroutineScope(Dispatchers.IO).launch {
                         backend.loginRelease(badge, accessToken)
                     }
@@ -191,7 +192,7 @@ class Filler(
                 tvItemCount.text = selectedArticle!!.count.toString()
             }
 
-            scanTimeoutHandler.postDelayed(scanTimeout, 120000)
+            scanTimeoutHandler.postDelayed(scanTimeout, 5000)
         }
     }
 
