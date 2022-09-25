@@ -15,6 +15,7 @@ import androidx.fragment.app.Fragment
 import com.novodin.ihc.R
 import com.novodin.ihc.model.Project
 import com.novodin.ihc.network.Backend
+import com.novodin.ihc.zebra.BarcodeScanner
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -99,12 +100,13 @@ class ProjectSelection(
 
                 accessToken = loginResponse!!.getString("accessToken")
 
-                val type = loginResponse!!.getInt("type")
+                val type = loginResponse.getInt("type")
                 // type 2 is filler
                 if (type == 2) {
                     // go to filler
                     parentFragmentManager.beginTransaction().apply {
-                        replace(R.id.flFragment, Filler(badge!!, accessToken, backend))
+                        replace(R.id.flFragment,
+                            Filler(badge!!, accessToken, backend))
                         commit()
                     }
                     return@launch
@@ -150,7 +152,10 @@ class ProjectSelection(
                     .setPositiveButton("Yes") { _, _ ->
                         parentFragmentManager.beginTransaction().apply {
                             replace(R.id.flFragment,
-                                ShoppingCart(badge!!, project.id, accessToken, backend))
+                                ShoppingCart(badge!!,
+                                    project.id,
+                                    accessToken,
+                                    backend))
                             commit()
                         }
                     }

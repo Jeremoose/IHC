@@ -18,6 +18,7 @@ import com.novodin.ihc.R
 import com.novodin.ihc.model.PackingSlipItem
 import com.novodin.ihc.model.Project
 import com.novodin.ihc.network.Backend
+import com.novodin.ihc.zebra.BarcodeScanner
 import com.novodin.ihc.zebra.Cradle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -27,7 +28,7 @@ import org.json.JSONException
 import org.w3c.dom.Text
 
 
-class StandbyScreen : Fragment(R.layout.fragment_standby_screen) {
+class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
     private lateinit var ivStandby: ImageView
     private lateinit var bSetIP: Button
     private lateinit var tvIP: TextView
@@ -38,7 +39,8 @@ class StandbyScreen : Fragment(R.layout.fragment_standby_screen) {
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var runnable: Runnable
 
-    private var ipAddress = "192.168.103.160"
+    private var ipAddress = "84.105.247.238"
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -137,7 +139,7 @@ class StandbyScreen : Fragment(R.layout.fragment_standby_screen) {
         parentFragmentManager.beginTransaction().apply {
             replace(R.id.flFragment,
                 ProjectSelection(accessToken, backend, projectsArrayList, badge))
-            addToBackStack("standby")
+            addToBackStack("")
             commit()
         }
     }

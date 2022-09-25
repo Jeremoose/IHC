@@ -4,12 +4,9 @@ import android.content.Context
 import com.symbol.emdk.EMDKManager
 import com.symbol.emdk.EMDKResults
 import com.symbol.emdk.barcode.*
+import java.lang.Exception
 
-class BarcodeScanner(
-    context: Context,
-    private val dataCallback: (String) -> Unit,
-    private val statusCallback: (String) -> Unit,
-) :
+class BarcodeScanner(context: Context) :
     EMDKManager.EMDKListener, Scanner.StatusListener,
     Scanner.DataListener {
 
@@ -17,15 +14,28 @@ class BarcodeScanner(
     private var barcodeManager: BarcodeManager? = null
     private var scanner: Scanner? = null
 
+    private var dataCallback: (String) -> Unit = {}
+    private var statusCallback: (String) -> Unit = {}
+
     init {
         val results = EMDKManager.getEMDKManager(context, this)
-        if (results.statusCode != EMDKResults.STATUS_CODE.SUCCESS)
-            throw error("EMDKManager object request failed")
+        if (results.statusCode != EMDKResults.STATUS_CODE.SUCCESS) {
+            throw Exception("EMDKManager object request failed")
+        }
+    }
+
+    fun setDataCallback(cb: (String) -> Unit) {
+        dataCallback = cb
+    }
+
+    fun setStatusCallback(cb: (String) -> Unit) {
+        statusCallback = cb
     }
 
     override fun onOpened(emdkManager: EMDKManager) {
         this.emdkManager = emdkManager
-        initBarcodeManager()
+        barcodeManager =
+            this.emdkManager!!.getInstance(EMDKManager.FEATURE_TYPE.BARCODE) as BarcodeManager
         initScanner()
     }
 
@@ -43,11 +53,12 @@ class BarcodeScanner(
     }
 
     override fun onClosed() {
-        deInitScanner()
+        if (scanner != null) {
+            if (scanner!!.isEnabled) scanner!!.disable()
+        }
+        scanner = null
         emdkManager?.release()
         emdkManager = null
-
-        statusCallback.invoke("EMDK closed unexpectedly! Please close and restart the application")
     }
 
 
@@ -84,14 +95,7 @@ class BarcodeScanner(
         statusCallback.invoke(statusStr)
     }
 
-    private fun initBarcodeManager() {
-        barcodeManager =
-            emdkManager!!.getInstance(EMDKManager.FEATURE_TYPE.BARCODE) as BarcodeManager
-    }
-
     private fun initScanner() {
-        scanner?.let { return } // return if scanner != null
-
         // Get default scanner defined on the device
         scanner = barcodeManager!!.getDevice(BarcodeManager.DeviceIdentifier.DEFAULT)
 
@@ -105,22 +109,18 @@ class BarcodeScanner(
         // press the trigger on the device after issuing the read call.
         // NOTE: For devices without a hard trigger, use TriggerType.SOFT_ALWAYS.
         scanner!!.triggerType = Scanner.TriggerType.HARD
-        try {
-            // Enable the scanner
-            // NOTE: After calling enable(), wait for IDLE status before calling other scanner APIs
-            // such as setConfig() or read().
-            scanner!!.enable()
-        } catch (e: ScannerException) {
-            e.message?.let { statusCallback.invoke(it) }
-            deInitScanner()
+        if (!scanner!!.isEnabled) {
+            try {
+                // Enable the scanner
+                // NOTE: After calling enable(), wait for IDLE status before calling other scanner APIs
+                // such as setConfig() or read().
+                scanner!!.enable()
+            } catch (e: ScannerException) {
+                println(e)
+                e.message?.let { statusCallback.invoke(it) }
+//                scanner?.release()
+            }
         }
-    }
-
-    private fun deInitScanner() {
-        if (scanner != null) {
-            scanner!!.release()
-        }
-        scanner = null
     }
 
     private fun setConfig() {

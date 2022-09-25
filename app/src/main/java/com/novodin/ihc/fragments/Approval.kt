@@ -82,8 +82,6 @@ class Approval(private var backend: Backend) : Fragment(R.layout.fragment_projec
                     bundleOf(Pair("success", userType == 1),
                         Pair("accessToken", if (userType == 1) accessToken else "")))
                 requireActivity().supportFragmentManager.popBackStack()
-
-
             }
         }
 

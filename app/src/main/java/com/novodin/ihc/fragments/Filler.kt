@@ -48,19 +48,6 @@ class Filler(
     private lateinit var ibRemove: ImageButton
     private lateinit var ibStop: ImageButton
 
-    // Barcode
-    private lateinit var barcodeScanner: BarcodeScanner
-
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        barcodeScanner.onClosed()
-    }
-
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
@@ -100,8 +87,9 @@ class Filler(
             alert.show()
         }
 
-        barcodeScanner =
-            BarcodeScanner(requireContext(), ::onBarcodeScanData, ::onBarcodeScanStatus)
+        val barcodeScanner = BarcodeScanner(requireContext())
+        barcodeScanner.setDataCallback(::onBarcodeScanData)
+        barcodeScanner.setStatusCallback(::onBarcodeScanStatus)
 
         scanTimeout = Runnable { onScanTimeout() }
 

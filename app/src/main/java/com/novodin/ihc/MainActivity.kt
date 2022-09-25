@@ -15,6 +15,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.novodin.ihc.fragments.ProjectSelection
 import com.novodin.ihc.fragments.StandbyScreen
+import com.novodin.ihc.zebra.BarcodeScanner
 
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -25,7 +26,6 @@ class MainActivity : AppCompatActivity() {
             .hide(WindowInsetsCompat.Type.systemBars())
         WindowInsetsControllerCompat(window, window.decorView).systemBarsBehavior =
             WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-
 
         supportFragmentManager.beginTransaction().apply {
             replace(R.id.flFragment, StandbyScreen())
