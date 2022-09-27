@@ -232,6 +232,8 @@ class ShoppingCart(
                         backend.loginRelease(badge, accessToken)
 
                     }
+                    Toast.makeText(requireContext(), "Successfully approved", Toast.LENGTH_LONG)
+                        .show()
                     // TODO figure out why at this popbackstack, the fragment doesn't finish its lifecycle
                     requireActivity().supportFragmentManager.popBackStack()
                 }

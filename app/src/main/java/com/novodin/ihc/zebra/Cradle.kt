@@ -24,6 +24,8 @@ class Cradle(context: Context) : EMDKListener {
         val personalShopper =
             emdkManager!!.getInstance(FEATURE_TYPE.PERSONALSHOPPER) as PersonalShopper
 
+        personalShopper.cradle
+
         try {
             if (!personalShopper.cradle.isEnabled) personalShopper.cradle.enable()
             val ledFlashInfo = CradleLedFlashInfo(100, 500, true)
