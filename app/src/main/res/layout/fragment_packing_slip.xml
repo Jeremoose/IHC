@@ -28,7 +28,7 @@
         app:layout_constraintStart_toStartOf="parent">
 
         <ImageButton
-            android:id="@+id/ibRemove"
+            android:id="@+id/ibNavOne"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -41,7 +41,7 @@
             app:tint="#FFFFFFFF" />
 
         <ImageButton
-            android:id="@+id/ibDelete"
+            android:id="@+id/ibNavTwo"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -54,7 +54,7 @@
             app:tint="#FFFFFFFF" />
 
         <ImageButton
-            android:id="@+id/ibStop"
+            android:id="@+id/ibNavThree"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -67,7 +67,7 @@
             app:tint="#FFFFFFFF" />
 
         <ImageButton
-            android:id="@+id/ibAdd"
+            android:id="@+id/ibNavFour"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_weight="1"

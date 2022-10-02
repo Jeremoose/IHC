@@ -26,6 +26,10 @@ class ShoppingCart(
     private var accessToken: String,
     private var backend: Backend,
 ) : Fragment(R.layout.fragment_shopping_cart) {
+    // View color variables
+    private var colorPrimaryEnabled = 0
+    private var colorPrimaryDisabled = 0
+
     // Shopping cart variables
     private val articleList: MutableList<Article> = ArrayList()
     private var itemCount: Int = 0
@@ -39,17 +43,71 @@ class ShoppingCart(
     private lateinit var tvItemCount: TextView
     private lateinit var tvPUCount: TextView
     private lateinit var tvUnitCount: TextView
-    private lateinit var ibRemove: ImageButton
-    private lateinit var ibDelete: ImageButton
-    private lateinit var ibStop: ImageButton
-    private lateinit var ibAdd: ImageButton
+    private lateinit var ibNavOne: ImageButton
+    private lateinit var ibNavThree: ImageButton
+    private lateinit var ibNavFour: ImageButton
+    private lateinit var tvNavOne: TextView
+    private lateinit var tvNavFour: TextView
 
     // Barcode scanner
     private lateinit var barcodeScanner: BarcodeScanner
 
+    private fun initNavButtons(view: View) {
+        // First nav button
+        (view.findViewById(R.id.ibNavOne) as ImageButton).apply {
+            this.setImageResource(R.drawable.ic_minus)
+            this.isEnabled = false
+        }
+        (view.findViewById(R.id.tvNavOne) as TextView).apply {
+            this.text = "Remove"
+            this.setTextColor(colorPrimaryDisabled)
+        }
+
+        // Second nav button
+        (view.findViewById(R.id.ibNavTwo) as ImageButton).apply {
+            this.setImageResource(R.drawable.ic_arrow_back)
+            this.isEnabled = false
+        }
+        (view.findViewById(R.id.tvNavTwo) as TextView).apply {
+            this.text = "Back"
+            this.setTextColor(colorPrimaryDisabled)
+        }
+
+        // Third nav button (always enabled)
+        if (approvalState) {
+            (view.findViewById(R.id.ibNavThree) as ImageButton).apply {
+                this.setImageResource(R.drawable.ic_check)
+                this.isEnabled = true
+            }
+            (view.findViewById(R.id.tvNavThree) as TextView).apply {
+                this.text = "Approve"
+                this.setTextColor(colorPrimaryEnabled)
+            }
+        } else {
+            (view.findViewById(R.id.ibNavThree) as ImageButton).apply {
+                this.setImageResource(R.drawable.ic_cancel)
+                this.isEnabled = true
+            }
+            (view.findViewById(R.id.tvNavThree) as TextView).apply {
+                this.text = "Stop"
+                this.setTextColor(colorPrimaryEnabled)
+            }
+        }
+
+        // Fourth nav button
+        (view.findViewById(R.id.ibNavFour) as ImageButton).apply {
+            this.setImageResource(R.drawable.ic_plus)
+            this.isEnabled = false
+        }
+        (view.findViewById(R.id.tvNavFour) as TextView).apply {
+            this.text = "Add"
+            this.setTextColor(colorPrimaryDisabled)
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setFragmentResultListener("approveLogin") { requestKey, bundle ->
+        setFragmentResultListener("approveLogin") { _, bundle ->
             // We use a String here, but any type that can be put in a Bundle is supported
             val success = bundle.getBoolean("success")
             val accessToken = bundle.getString("accessToken")
@@ -75,26 +133,53 @@ class ShoppingCart(
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        colorPrimaryDisabled =
+            requireContext().getColor(com.google.android.material.R.color.material_on_primary_disabled)
+        colorPrimaryEnabled =
+            requireContext().getColor(com.google.android.material.R.color.material_on_primary_emphasis_high_type)
+
+        initNavButtons(view)
         // init view elements
         rvArticleList = view.findViewById(R.id.rvArticleList) as RecyclerView
         tvItemCount = view.findViewById(R.id.tvItemCount) as TextView
         tvPUCount = view.findViewById(R.id.tvPUCount) as TextView
         tvUnitCount = view.findViewById(R.id.tvUnitCount) as TextView
 
-        ibRemove = view.findViewById(R.id.ibRemove) as ImageButton
-        ibDelete = view.findViewById(R.id.ibDelete) as ImageButton
-        ibStop = view.findViewById(R.id.ibStop) as ImageButton
-        ibAdd = view.findViewById(R.id.ibAdd) as ImageButton
-
         tvItemCount.text = itemCount.toString()
         tvPUCount.text = puCount.toString()
         tvUnitCount.text = unitCount.toString()
 
         rvArticleList.adapter = ArticleRecyclerViewAdapter(articleList)
+        (rvArticleList.adapter as ArticleRecyclerViewAdapter).setOnItemSelectExtra { enablePlusMinus() }
 
-        ibAdd.setOnClickListener { add() }
-        ibRemove.setOnClickListener { remove() }
-        ibStop.setOnClickListener { stop() }
+        ibNavOne = view.findViewById(R.id.ibNavOne) as ImageButton
+        ibNavThree = view.findViewById(R.id.ibNavThree) as ImageButton
+        ibNavFour = view.findViewById(R.id.ibNavFour) as ImageButton
+
+        tvNavOne = view.findViewById(R.id.tvNavOne) as TextView
+        tvNavFour = view.findViewById(R.id.tvNavFour) as TextView
+
+        ibNavOne.setOnClickListener { remove() }
+        ibNavThree.setOnClickListener { stop() }
+        ibNavFour.setOnClickListener { add() }
+    }
+
+    private fun enablePlusMinus() {
+        if (!(ibNavOne.isEnabled || ibNavFour.isEnabled)) {
+            ibNavOne.isEnabled = true
+            tvNavOne.setTextColor(colorPrimaryEnabled)
+            ibNavFour.isEnabled = true
+            tvNavFour.setTextColor(colorPrimaryEnabled)
+        }
+    }
+
+    private fun disablePlusMinus() {
+        if (ibNavOne.isEnabled || ibNavFour.isEnabled) {
+            ibNavOne.isEnabled = false
+            tvNavOne.setTextColor(colorPrimaryDisabled)
+            ibNavFour.isEnabled = false
+            tvNavFour.setTextColor(colorPrimaryDisabled)
+        }
     }
 
     override fun onResume() {
@@ -102,6 +187,11 @@ class ShoppingCart(
         barcodeScanner = BarcodeScanner(requireContext())
         barcodeScanner.setDataCallback(::dataCallback)
         barcodeScanner.setStatusCallback(::statusCallback)
+
+        // Sanity null check, view should always exist here
+        view?.let {
+            initNavButtons(it)
+        }
     }
 
     override fun onPause() {
@@ -196,19 +286,21 @@ class ShoppingCart(
 
         val article = articleList[pos]
 
-        // remove item in backend
+        // Remove item in backend
         CoroutineScope(Dispatchers.IO).launch {
             backend.removeItem(cartId,
                 article.id,
                 accessToken)
         }
 
-        // remove item in UI
+        // Remove item in UI
         if (article.count == 1) {
             // Remove article from list
             articleList.removeAt(pos)
             adapter.selectedValuePosition = -1
             adapter.notifyItemRemoved(pos)
+            // Disable plus and minus buttons
+            disablePlusMinus()
         } else {
             article.count--
             adapter.notifyItemChanged(pos)
@@ -223,7 +315,7 @@ class ShoppingCart(
     private fun stop() {
         if (approvalState) {
             val builder = AlertDialog.Builder(requireContext())
-            builder.setMessage("Approve?")
+            builder.setMessage("Are you sure?")
                 .setCancelable(false)
                 .setPositiveButton("Yes") { _, _ ->
                     barcodeScanner.onClosed()

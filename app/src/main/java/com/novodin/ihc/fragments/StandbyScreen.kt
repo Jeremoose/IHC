@@ -39,7 +39,7 @@ class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var runnable: Runnable
 
-    private var ipAddress = "84.105.247.238"
+    private var ipAddress = "34.68.16.30"
 
 
     override fun onCreate(savedInstanceState: Bundle?) {

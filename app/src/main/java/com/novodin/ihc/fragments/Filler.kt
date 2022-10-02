@@ -5,7 +5,6 @@ import android.app.AlertDialog
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.util.Log
 import android.view.View
 import android.view.WindowManager
 import android.widget.ImageButton
@@ -58,9 +57,9 @@ class Filler(
         tvArticleName = view.findViewById(R.id.tvArticleName) as TextView
         tvArticleNumber = view.findViewById(R.id.tvArticleNumber) as TextView
         tvQuantityType = view.findViewById(R.id.tvQuantityType) as TextView
-        ibAdd = view.findViewById(R.id.ibAdd) as ImageButton
-        ibRemove = view.findViewById(R.id.ibRemove) as ImageButton
-        ibStop = view.findViewById(R.id.ibStop) as ImageButton
+        ibAdd = view.findViewById(R.id.ibNavFour) as ImageButton
+        ibRemove = view.findViewById(R.id.ibNavOne) as ImageButton
+        ibStop = view.findViewById(R.id.ibNavThree) as ImageButton
 
         tvAdding.text = "0"
         tvNewTotal.text = "0"

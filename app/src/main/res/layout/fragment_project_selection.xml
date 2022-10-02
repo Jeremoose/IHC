@@ -18,13 +18,14 @@
         app:layout_constraintStart_toStartOf="parent">
 
         <LinearLayout
+            android:id="@+id/llNavOne"
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:orientation="vertical">
 
             <ImageButton
-                android:id="@+id/ibRemove"
+                android:id="@+id/ibNavOne"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_weight="0.8"
@@ -34,10 +35,10 @@
                 android:scaleX="1"
                 android:scaleY="1"
                 app:srcCompat="@drawable/ic_minus"
-                app:tint="@color/material_on_primary_disabled" />
+                app:tint="@drawable/nav_selector" />
 
             <TextView
-                android:id="@+id/textView3"
+                android:id="@+id/tvNavOne"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_weight="0.2"
@@ -47,13 +48,14 @@
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/llNavTwo"
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:orientation="vertical">
 
             <ImageButton
-                android:id="@+id/ibDelete"
+                android:id="@+id/ibNavTwo"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_weight="0.8"
@@ -63,26 +65,27 @@
                 android:scaleX="1"
                 android:scaleY="1"
                 app:srcCompat="@drawable/ic_arrow_back"
-                app:tint="@color/material_on_primary_emphasis_high_type" />
+                app:tint="@drawable/nav_selector" />
 
             <TextView
-                android:id="@+id/textView4"
+                android:id="@+id/tvNavTwo"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_weight="0.2"
                 android:text="Back"
                 android:textAlignment="center"
-                android:textColor="@color/material_on_primary_emphasis_high_type" />
+                android:textColor="@color/material_on_primary_disabled" />
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/llNavThree"
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:orientation="vertical">
 
             <ImageButton
-                android:id="@+id/ibStop"
+                android:id="@+id/ibNavThree"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_weight="0.8"
@@ -91,11 +94,10 @@
                 android:scaleType="fitCenter"
                 android:scaleX="1"
                 android:scaleY="1"
-                app:srcCompat="@drawable/ic_cancel"
-                app:tint="@color/material_on_primary_disabled" />
+                app:tint="@drawable/nav_selector" />
 
             <TextView
-                android:id="@+id/textView5"
+                android:id="@+id/tvNavThree"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_weight="0.2"
@@ -105,32 +107,33 @@
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/llNavFour"
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:orientation="vertical">
 
             <ImageButton
-                android:id="@+id/ibAdd"
+                android:id="@+id/ibNavFour"
                 android:layout_width="match_parent"
                 android:layout_height="0dp"
                 android:layout_weight="0.8"
                 android:background="#00FFFFFF"
                 android:padding="8dp"
                 android:scaleType="fitCenter"
-                android:scaleX="1"
-                android:scaleY="1"
-                app:srcCompat="@drawable/ic_plus"
-                app:tint="@color/material_on_primary_disabled" />
+                android:scaleX="1.2"
+                android:scaleY="1.2"
+                app:srcCompat="@drawable/ic_next"
+                app:tint="@drawable/nav_selector" />
 
             <TextView
-                android:id="@+id/textView6"
+                android:id="@+id/tvNavFour"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_weight="0.2"
-                android:text="Add"
+                android:text="Next"
                 android:textAlignment="center"
-                android:textColor="@color/material_on_primary_disabled" />
+                android:textColor="@color/material_on_primary_emphasis_high_type" />
         </LinearLayout>
 
     </LinearLayout>

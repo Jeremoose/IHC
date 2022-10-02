@@ -10,10 +10,12 @@ import com.novodin.ihc.databinding.FragmentArticleBinding
 import com.novodin.ihc.model.Article
 
 class ArticleRecyclerViewAdapter(
-    private val values: List<Article>
+    private val values: List<Article>,
 ) : RecyclerView.Adapter<ArticleRecyclerViewAdapter.ViewHolder>() {
 
     var selectedValuePosition: Int = -1
+
+    private var onItemSelectExtra: () -> Unit = {}
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         return ViewHolder(
@@ -34,16 +36,23 @@ class ArticleRecyclerViewAdapter(
 
         holder.itemView.setOnClickListener {
             selectedValuePosition = position
+            onItemSelectExtra.invoke()
+//            notifyItemChanged(position)
             notifyDataSetChanged()
         }
 
-        if (position == selectedValuePosition)
+        if (position == selectedValuePosition) {
             holder.itemView.setBackgroundColor(holder.itemView.context.getColor(R.color.selected_overlay))
-        else
+        } else {
             holder.itemView.setBackgroundColor(holder.itemView.context.getColor(R.color.white))
+        }
     }
 
     override fun getItemCount(): Int = values.size
+
+    fun setOnItemSelectExtra(cb: () -> Unit) {
+        onItemSelectExtra = cb
+    }
 
     inner class ViewHolder(binding: FragmentArticleBinding) :
         RecyclerView.ViewHolder(binding.root) {

@@ -5,7 +5,10 @@
       <map>
         <entry key="..\:/Users/Jeremy/AndroidStudioProjects/IHC/app/src/main/res/drawable-anydpi/standby-screen-image.xml" value="0.3615" />
         <entry key="..\:/Users/Jeremy/AndroidStudioProjects/IHC/app/src/main/res/drawable/ic_arrow_back.xml" value="0.3295" />
+        <entry key="..\:/Users/Jeremy/AndroidStudioProjects/IHC/app/src/main/res/drawable/ic_next.xml" value="0.3615" />
+        <entry key="..\:/Users/Jeremy/AndroidStudioProjects/IHC/app/src/main/res/drawable/ic_plus.xml" value="0.3615" />
         <entry key="..\:/Users/Jeremy/AndroidStudioProjects/IHC/app/src/main/res/drawable/ic_standby_screen.xml" value="0.3615" />
+        <entry key="..\:/Users/Jeremy/AndroidStudioProjects/IHC/app/src/main/res/drawable/nav_selector.xml" value="0.3615" />
         <entry key="..\:/Users/Jeremy/AndroidStudioProjects/IHC/app/src/main/res/layout/activity_fullscreen.xml" value="0.371875" />
         <entry key="..\:/Users/Jeremy/AndroidStudioProjects/IHC/app/src/main/res/layout/activity_fullscreen_activitytest.xml" value="0.3052586575459598" />
         <entry key="..\:/Users/Jeremy/AndroidStudioProjects/IHC/app/src/main/res/layout/activity_fullscreentest.xml" value="0.3142368533561351" />
@@ -20,9 +23,9 @@
         <entry key="..\:/Users/Jeremy/AndroidStudioProjects/IHC/app/src/main/res/layout/fragment_item_list.xml" value="0.3578125" />
         <entry key="..\:/Users/Jeremy/AndroidStudioProjects/IHC/app/src/main/res/layout/fragment_packing_slip.xml" value="0.2937152629328773" />
         <entry key="..\:/Users/Jeremy/AndroidStudioProjects/IHC/app/src/main/res/layout/fragment_packing_slip_item.xml" value="0.25" />
-        <entry key="..\:/Users/Jeremy/AndroidStudioProjects/IHC/app/src/main/res/layout/fragment_project_selection.xml" value="0.75" />
+        <entry key="..\:/Users/Jeremy/AndroidStudioProjects/IHC/app/src/main/res/layout/fragment_project_selection.xml" value="0.33" />
         <entry key="..\:/Users/Jeremy/AndroidStudioProjects/IHC/app/src/main/res/layout/fragment_scanner_test.xml" value="0.3052586575459598" />
-        <entry key="..\:/Users/Jeremy/AndroidStudioProjects/IHC/app/src/main/res/layout/fragment_shopping_cart.xml" value="0.25" />
+        <entry key="..\:/Users/Jeremy/AndroidStudioProjects/IHC/app/src/main/res/layout/fragment_shopping_cart.xml" value="0.22592592592592592" />
         <entry key="..\:/Users/Jeremy/AndroidStudioProjects/IHC/app/src/main/res/layout/fragment_standby.xml" value="0.3052586575459598" />
         <entry key="..\:/Users/Jeremy/AndroidStudioProjects/IHC/app/src/main/res/layout/fragment_standby_screen.xml" value="0.5" />
         <entry key="..\:/Users/Jeremy/AndroidStudioProjects/IHC/app/src/main/res/layout/recycler_view_item.xml" value="0.371875" />

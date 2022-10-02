@@ -10,7 +10,6 @@ import androidx.recyclerview.widget.RecyclerView
 import com.novodin.ihc.R
 import com.novodin.ihc.adapters.PackingSlipItemRecyclerViewAdapter
 import com.novodin.ihc.model.PackingSlipItem
-import com.novodin.ihc.model.QuantityType
 import com.novodin.ihc.network.Backend
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -33,7 +32,7 @@ class PackingSlip(
         rvPackingSlipItemList = view.findViewById(R.id.rvPackingSlip) as RecyclerView
         rvPackingSlipItemList.adapter = PackingSlipItemRecyclerViewAdapter(packingSlipItemList)
 
-        ibAdd = view.findViewById(R.id.ibAdd) as ImageButton
+        ibAdd = view.findViewById(R.id.ibNavFour) as ImageButton
 
         ibAdd.setOnClickListener {
             val adapter = rvPackingSlipItemList.adapter as PackingSlipItemRecyclerViewAdapter

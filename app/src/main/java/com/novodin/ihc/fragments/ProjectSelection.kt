@@ -15,7 +15,6 @@ import androidx.fragment.app.Fragment
 import com.novodin.ihc.R
 import com.novodin.ihc.model.Project
 import com.novodin.ihc.network.Backend
-import com.novodin.ihc.zebra.BarcodeScanner
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -29,13 +28,64 @@ class ProjectSelection(
     private var badge: String? = null,
 ) : Fragment(R.layout.fragment_project_selection) {
 
+    private var colorPrimaryEnabled = 0
+    private var colorPrimaryDisabled = 0
+
     private lateinit var etBadgeNumber: EditText
     private lateinit var sProjects: Spinner
     private lateinit var tvLabelProjects: TextView
-    private lateinit var ibAdd: ImageButton
+
+    private lateinit var ibNavFour: ImageButton
+    private lateinit var tvNavFour: TextView
 
     private var selectedProject: Project? = null
 
+    private fun initNavButtons(view: View) {
+        // First nav button
+        (view.findViewById(R.id.ibNavOne) as ImageButton).apply {
+            this.setImageResource(R.drawable.ic_minus)
+            this.isEnabled = false
+        }
+        (view.findViewById(R.id.tvNavOne) as TextView).apply {
+            this.text = "Remove"
+            this.setTextColor(colorPrimaryDisabled)
+        }
+
+        // Second nav button
+        (view.findViewById(R.id.ibNavTwo) as ImageButton).apply {
+            this.setImageResource(R.drawable.ic_arrow_back)
+            this.isEnabled = false
+        }
+        (view.findViewById(R.id.tvNavTwo) as TextView).apply {
+            this.text = "Back"
+            this.setTextColor(colorPrimaryDisabled)
+        }
+
+        // Third nav button
+        (view.findViewById(R.id.ibNavThree) as ImageButton).apply {
+            this.setImageResource(R.drawable.ic_cancel)
+            this.isEnabled = false
+        }
+        (view.findViewById(R.id.tvNavThree) as TextView).apply {
+            this.text = "Stop"
+            this.setTextColor(colorPrimaryDisabled)
+        }
+
+        // Fourth nav button
+        (view.findViewById(R.id.ibNavFour) as ImageButton).apply {
+            this.setImageResource(R.drawable.ic_next)
+            this.isEnabled = false
+        }
+        (view.findViewById(R.id.tvNavFour) as TextView).apply {
+            this.text = "Next"
+            this.setTextColor(colorPrimaryDisabled)
+        }
+    }
+
+    private fun enableNextButton() {
+        ibNavFour.isEnabled = true
+        tvNavFour.setTextColor(colorPrimaryEnabled)
+    }
 
     private fun initSpinnerProjects() {
         sProjects.avoidDropdownFocus()
@@ -55,8 +105,12 @@ class ProjectSelection(
             ) {
                 if (position >= projects!!.size)
                     Log.e("err", "position bigger than size of projects")
-                else
+                else {
                     selectedProject = projects!![position]
+                    if (!ibNavFour.isEnabled) {
+                        enableNextButton()
+                    }
+                }
             }
         }
     }
@@ -64,12 +118,19 @@ class ProjectSelection(
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-//        requireActivity().window.addFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
+        colorPrimaryDisabled =
+            requireContext().getColor(com.google.android.material.R.color.material_on_primary_disabled)
+        colorPrimaryEnabled =
+            requireContext().getColor(com.google.android.material.R.color.material_on_primary_emphasis_high_type)
 
         etBadgeNumber = view.findViewById(R.id.etBadgeNumber) as EditText
         sProjects = view.findViewById(R.id.sProjects) as Spinner
         tvLabelProjects = view.findViewById(R.id.tvLabelProjects) as TextView
-        ibAdd = view.findViewById(R.id.ibAdd) as ImageButton
+
+        ibNavFour = view.findViewById(R.id.ibNavFour) as ImageButton
+        tvNavFour = view.findViewById(R.id.tvNavFour) as TextView
+
+        initNavButtons(view)
 
         initSpinnerProjects()
 
@@ -91,6 +152,8 @@ class ProjectSelection(
                 arrayOf("No projects retrieved yet..."))
         }
 
+        // onSubmit is an extended function on the EditText of the badge number
+        // the onSubmit when the user is done with the on screen keyboard
         etBadgeNumber.onSubmit {
             CoroutineScope(Dispatchers.IO).launch {
                 val loginResponse = backend.login(etBadgeNumber.text.toString()) {
@@ -144,7 +207,8 @@ class ProjectSelection(
             }
         }
 
-        ibAdd.setOnClickListener {
+        // next button set onclick listener
+        ibNavFour.setOnClickListener {
             selectedProject?.let { project ->
                 val builder = AlertDialog.Builder(requireContext())
                 builder.setMessage("Is this the correct project?")
@@ -168,8 +232,6 @@ class ProjectSelection(
                 dialog.show()
             }
         }
-
-
     }
 
     private fun EditText.onSubmit(func: () -> Unit) {
@@ -188,7 +250,7 @@ class ProjectSelection(
         imm.hideSoftInputFromWindow(this.windowToken, 0)
     }
 
-    fun Spinner.avoidDropdownFocus() {
+    private fun Spinner.avoidDropdownFocus() {
         try {
             val isAppCompat = this is androidx.appcompat.widget.AppCompatSpinner
             val spinnerClass =
