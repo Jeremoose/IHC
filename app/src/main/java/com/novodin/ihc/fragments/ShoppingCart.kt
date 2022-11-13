@@ -2,6 +2,11 @@ package com.novodin.ihc.fragments
 
 import android.app.Activity
 import android.app.AlertDialog
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.os.BatteryManager
 import android.os.Bundle
 import androidx.fragment.app.Fragment
 import android.view.View
@@ -26,6 +31,8 @@ class ShoppingCart(
     private var accessToken: String,
     private var backend: Backend,
 ) : Fragment(R.layout.fragment_shopping_cart) {
+    private var intentFilter = IntentFilter()
+
     // View color variables
     private var colorPrimaryEnabled = 0
     private var colorPrimaryDisabled = 0
@@ -107,6 +114,8 @@ class ShoppingCart(
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        intentFilter.addAction(Intent.ACTION_BATTERY_CHANGED)
+        requireContext().registerReceiver(batteryChangeReceiver, intentFilter)
         setFragmentResultListener("approveLogin") { _, bundle ->
             // We use a String here, but any type that can be put in a Bundle is supported
             val success = bundle.getBoolean("success")
@@ -343,6 +352,7 @@ class ShoppingCart(
                 .setCancelable(false)
                 .setPositiveButton("Verify") { _, _ ->
                     parentFragmentManager.beginTransaction().apply {
+                        requireContext().unregisterReceiver(batteryChangeReceiver)
                         CoroutineScope(Dispatchers.IO).launch {
                             backend.loginRelease(badge, accessToken)
                         }
@@ -358,6 +368,19 @@ class ShoppingCart(
             alert.window?.setFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
             alert.show()
+        }
+    }
+
+    private val batteryChangeReceiver: BroadcastReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent) {
+            val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
+            if (status == BatteryManager.BATTERY_STATUS_CHARGING) {
+                Toast.makeText(requireContext(), "IN CRADLE", Toast.LENGTH_SHORT).show()
+            }
+            if (status == BatteryManager.BATTERY_STATUS_DISCHARGING) {
+                Toast.makeText(requireContext(), "REMOVED FROM CRADLE", Toast.LENGTH_SHORT)
+                    .show()
+            }
         }
     }
 }

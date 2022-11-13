@@ -2,33 +2,35 @@ package com.novodin.ihc.fragments
 
 import android.app.Activity
 import android.app.AlertDialog
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.os.BatteryManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.text.InputType
 import android.view.View
 import android.view.WindowManager
-import android.widget.Button
-import android.widget.EditText
-import android.widget.ImageView
-import android.widget.TextView
+import android.widget.*
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.novodin.ihc.R
 import com.novodin.ihc.model.PackingSlipItem
 import com.novodin.ihc.model.Project
 import com.novodin.ihc.network.Backend
-import com.novodin.ihc.zebra.BarcodeScanner
 import com.novodin.ihc.zebra.Cradle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONException
-import org.w3c.dom.Text
 
 
 class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
+    private var intentFilter = IntentFilter()
+
     private lateinit var ivStandby: ImageView
     private lateinit var bSetIP: Button
     private lateinit var tvIP: TextView
@@ -44,6 +46,9 @@ class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        intentFilter.addAction(Intent.ACTION_BATTERY_CHANGED)
+        requireContext().registerReceiver(batteryChangeReceiver, intentFilter)
+
         cradle = Cradle(requireContext())
         backend = Backend(requireContext(), "http://${ipAddress}:3001")
     }
@@ -137,6 +142,7 @@ class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
                 projectJSON.getInt("end")))
         }
         parentFragmentManager.beginTransaction().apply {
+            requireActivity().unregisterReceiver(batteryChangeReceiver)
             replace(R.id.flFragment,
                 ProjectSelection(accessToken, backend, projectsArrayList, badge))
             addToBackStack("")
@@ -180,6 +186,7 @@ class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
     ) {
         lifecycleScope.launchWhenResumed {
             parentFragmentManager.beginTransaction().apply {
+                requireContext().unregisterReceiver(batteryChangeReceiver)
                 replace(R.id.flFragment,
                     PackingSlip(accessToken, backend, packingSlipItemArrayList))
                 addToBackStack("standby")
@@ -191,6 +198,7 @@ class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
     private fun goToFillerFragment(badge: String, accessToken: String) {
         lifecycleScope.launchWhenResumed {
             parentFragmentManager.beginTransaction().apply {
+                requireContext().unregisterReceiver(batteryChangeReceiver)
                 replace(R.id.flFragment,
                     Filler(badge, accessToken, backend))
                 addToBackStack("standby")
@@ -199,4 +207,16 @@ class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
         }
     }
 
+    private val batteryChangeReceiver: BroadcastReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent) {
+            val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
+            if (status == BatteryManager.BATTERY_STATUS_CHARGING) {
+                Toast.makeText(requireContext(), "IN CRADLE", Toast.LENGTH_SHORT).show()
+            }
+            if (status == BatteryManager.BATTERY_STATUS_DISCHARGING) {
+                Toast.makeText(requireContext(), "REMOVED FROM CRADLE", Toast.LENGTH_SHORT)
+                    .show()
+            }
+        }
+    }
 }

@@ -2,7 +2,11 @@ package com.novodin.ihc.fragments
 
 import android.app.Activity
 import android.app.AlertDialog
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.os.BatteryManager
 import android.os.Bundle
 import android.util.Log
 import android.view.View
@@ -27,6 +31,7 @@ class ProjectSelection(
     private var projects: ArrayList<Project>? = null,
     private var badge: String? = null,
 ) : Fragment(R.layout.fragment_project_selection) {
+    private var intentFilter = IntentFilter()
 
     private var colorPrimaryEnabled = 0
     private var colorPrimaryDisabled = 0
@@ -115,6 +120,12 @@ class ProjectSelection(
         }
     }
 
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        intentFilter.addAction(Intent.ACTION_BATTERY_CHANGED)
+        requireContext().registerReceiver(batteryChangeReceiver, intentFilter)
+    }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
@@ -168,6 +179,7 @@ class ProjectSelection(
                 if (type == 2) {
                     // go to filler
                     parentFragmentManager.beginTransaction().apply {
+                        requireContext().unregisterReceiver(batteryChangeReceiver)
                         replace(R.id.flFragment,
                             Filler(badge!!, accessToken, backend))
                         commit()
@@ -215,6 +227,7 @@ class ProjectSelection(
                     .setCancelable(false)
                     .setPositiveButton("Yes") { _, _ ->
                         parentFragmentManager.beginTransaction().apply {
+                            requireContext().unregisterReceiver(batteryChangeReceiver)
                             replace(R.id.flFragment,
                                 ShoppingCart(badge!!,
                                     project.id,
@@ -273,6 +286,19 @@ class ProjectSelection(
             }
         } catch (e: Exception) {
             e.printStackTrace()
+        }
+    }
+
+    private val batteryChangeReceiver: BroadcastReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent) {
+            val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
+            if (status == BatteryManager.BATTERY_STATUS_CHARGING) {
+                Toast.makeText(requireContext(), "IN CRADLE", Toast.LENGTH_SHORT).show()
+            }
+            if (status == BatteryManager.BATTERY_STATUS_DISCHARGING) {
+                Toast.makeText(requireContext(), "REMOVED FROM CRADLE", Toast.LENGTH_SHORT)
+                    .show()
+            }
         }
     }
 }
