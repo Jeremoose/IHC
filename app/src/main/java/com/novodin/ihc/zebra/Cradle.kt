@@ -33,7 +33,7 @@ class Cradle(context: Context) : EMDKListener {
 
             return result == CradleResults.SUCCESS
         } catch (e: CradleException) {
-            e.printStackTrace()
+            //e.printStackTrace()
         }
 
         return false

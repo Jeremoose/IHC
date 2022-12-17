@@ -17,6 +17,7 @@ import android.widget.*
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.novodin.ihc.R
+import com.novodin.ihc.config.Config
 import com.novodin.ihc.model.PackingSlipItem
 import com.novodin.ihc.model.Project
 import com.novodin.ihc.network.Backend
@@ -29,28 +30,28 @@ import org.json.JSONException
 
 
 class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
-    private var intentFilter = IntentFilter()
+//    private var intentFilter = IntentFilter()
 
+    // View elements
     private lateinit var ivStandby: ImageView
     private lateinit var bSetIP: Button
     private lateinit var tvIP: TextView
 
+    // general novodin scanner app vars
     private lateinit var backend: Backend
     private lateinit var cradle: Cradle
 
+    // Polling variables
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var runnable: Runnable
 
-    private var ipAddress = "34.68.16.30"
-
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        intentFilter.addAction(Intent.ACTION_BATTERY_CHANGED)
-        requireContext().registerReceiver(batteryChangeReceiver, intentFilter)
+//        intentFilter.addAction(Intent.ACTION_BATTERY_CHANGED)
 
         cradle = Cradle(requireContext())
-        backend = Backend(requireContext(), "http://${ipAddress}:3001")
+        backend =
+            Backend(requireContext(), "http://${Config.BackendIpAddress}:${Config.BackendPort}")
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -59,7 +60,7 @@ class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
         ivStandby.setImageResource(R.drawable.ic_standby_screen)
 
         tvIP = view.findViewById(R.id.tvIP)
-        tvIP.text = ipAddress
+        tvIP.text = Config.BackendIpAddress
 
         bSetIP = view.findViewById(R.id.bSetIP) as Button
         bSetIP.setOnClickListener {
@@ -71,7 +72,6 @@ class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
             // Set up the input
             val input = EditText(requireContext())
             // Specify the type of input expected; this, for example, sets the input as a password, and will mask the text
-            // Specify the type of input expected; this, for example, sets the input as a password, and will mask the text
             input.inputType = InputType.TYPE_CLASS_TEXT
             builder.setView(input)
 
@@ -80,10 +80,11 @@ class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
             // Set up the buttons
             builder.setPositiveButton("OK"
             ) { _, _ ->
-                ipAddress = input.text.toString()
-                backend = Backend(requireContext(), "http://${ipAddress}:3001")
+                Config.BackendIpAddress = input.text.toString()
+                backend = Backend(requireContext(),
+                    "http://${Config.BackendIpAddress}:${Config.BackendPort}")
                 (requireContext() as Activity).runOnUiThread {
-                    tvIP.text = ipAddress
+                    tvIP.text = Config.BackendIpAddress
                 }
             }
             builder.setNegativeButton("Cancel"
@@ -142,10 +143,9 @@ class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
                 projectJSON.getInt("end")))
         }
         parentFragmentManager.beginTransaction().apply {
-            requireActivity().unregisterReceiver(batteryChangeReceiver)
             replace(R.id.flFragment,
                 ProjectSelection(accessToken, backend, projectsArrayList, badge))
-            addToBackStack("")
+            addToBackStack("standby")
             commit()
         }
     }
@@ -186,7 +186,6 @@ class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
     ) {
         lifecycleScope.launchWhenResumed {
             parentFragmentManager.beginTransaction().apply {
-                requireContext().unregisterReceiver(batteryChangeReceiver)
                 replace(R.id.flFragment,
                     PackingSlip(accessToken, backend, packingSlipItemArrayList))
                 addToBackStack("standby")
@@ -198,7 +197,6 @@ class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
     private fun goToFillerFragment(badge: String, accessToken: String) {
         lifecycleScope.launchWhenResumed {
             parentFragmentManager.beginTransaction().apply {
-                requireContext().unregisterReceiver(batteryChangeReceiver)
                 replace(R.id.flFragment,
                     Filler(badge, accessToken, backend))
                 addToBackStack("standby")
@@ -207,16 +205,17 @@ class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
         }
     }
 
-    private val batteryChangeReceiver: BroadcastReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent) {
-            val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
-            if (status == BatteryManager.BATTERY_STATUS_CHARGING) {
-                Toast.makeText(requireContext(), "IN CRADLE", Toast.LENGTH_SHORT).show()
-            }
-            if (status == BatteryManager.BATTERY_STATUS_DISCHARGING) {
-                Toast.makeText(requireContext(), "REMOVED FROM CRADLE", Toast.LENGTH_SHORT)
-                    .show()
-            }
-        }
-    }
+    //not needed here
+//    private val batteryChangeReceiver: BroadcastReceiver = object : BroadcastReceiver() {
+//        override fun onReceive(context: Context?, intent: Intent) {
+//            val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
+//            if (status == BatteryManager.BATTERY_STATUS_CHARGING) {
+//                Toast.makeText(requireContext(), "IN CRADLE", Toast.LENGTH_SHORT).show()
+//            }
+//            if (status == BatteryManager.BATTERY_STATUS_DISCHARGING) {
+//                Toast.makeText(requireContext(), "REMOVED FROM CRADLE", Toast.LENGTH_SHORT)
+//                    .show()
+//            }
+//        }
+//    }
 }

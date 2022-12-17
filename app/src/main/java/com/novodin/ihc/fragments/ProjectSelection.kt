@@ -6,8 +6,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.os.BatteryManager
-import android.os.Bundle
+import android.os.*
 import android.util.Log
 import android.view.View
 import android.view.WindowManager
@@ -17,6 +16,7 @@ import android.widget.*
 import android.widget.Spinner
 import androidx.fragment.app.Fragment
 import com.novodin.ihc.R
+import com.novodin.ihc.config.Config
 import com.novodin.ihc.model.Project
 import com.novodin.ihc.network.Backend
 import kotlinx.coroutines.CoroutineScope
@@ -33,101 +33,77 @@ class ProjectSelection(
 ) : Fragment(R.layout.fragment_project_selection) {
     private var intentFilter = IntentFilter()
 
+    // View color variables
     private var colorPrimaryEnabled = 0
     private var colorPrimaryDisabled = 0
 
+    // Project selection variables
+    private var selectedProject: Project? = null
+
+    // View elements
     private lateinit var etBadgeNumber: EditText
     private lateinit var sProjects: Spinner
     private lateinit var tvLabelProjects: TextView
-
     private lateinit var ibNavFour: ImageButton
     private lateinit var tvNavFour: TextView
 
-    private var selectedProject: Project? = null
-
-    private fun initNavButtons(view: View) {
-        // First nav button
-        (view.findViewById(R.id.ibNavOne) as ImageButton).apply {
-            this.setImageResource(R.drawable.ic_minus)
-            this.isEnabled = false
-        }
-        (view.findViewById(R.id.tvNavOne) as TextView).apply {
-            this.text = "Remove"
-            this.setTextColor(colorPrimaryDisabled)
-        }
-
-        // Second nav button
-        (view.findViewById(R.id.ibNavTwo) as ImageButton).apply {
-            this.setImageResource(R.drawable.ic_arrow_back)
-            this.isEnabled = false
-        }
-        (view.findViewById(R.id.tvNavTwo) as TextView).apply {
-            this.text = "Back"
-            this.setTextColor(colorPrimaryDisabled)
-        }
-
-        // Third nav button
-        (view.findViewById(R.id.ibNavThree) as ImageButton).apply {
-            this.setImageResource(R.drawable.ic_cancel)
-            this.isEnabled = false
-        }
-        (view.findViewById(R.id.tvNavThree) as TextView).apply {
-            this.text = "Stop"
-            this.setTextColor(colorPrimaryDisabled)
-        }
-
-        // Fourth nav button
-        (view.findViewById(R.id.ibNavFour) as ImageButton).apply {
-            this.setImageResource(R.drawable.ic_next)
-            this.isEnabled = false
-        }
-        (view.findViewById(R.id.tvNavFour) as TextView).apply {
-            this.text = "Next"
-            this.setTextColor(colorPrimaryDisabled)
-        }
-    }
-
-    private fun enableNextButton() {
-        ibNavFour.isEnabled = true
-        tvNavFour.setTextColor(colorPrimaryEnabled)
-    }
-
-    private fun initSpinnerProjects() {
-        sProjects.avoidDropdownFocus()
-        if (projects == null) {
-            sProjects.visibility = View.GONE
-            tvLabelProjects.visibility = View.GONE
-        }
-        sProjects.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onNothingSelected(parent: AdapterView<*>?) {
-            }
-
-            override fun onItemSelected(
-                parent: AdapterView<*>?,
-                view: View?,
-                position: Int,
-                id: Long,
-            ) {
-                if (position >= projects!!.size)
-                    Log.e("err", "position bigger than size of projects")
-                else {
-                    selectedProject = projects!![position]
-                    if (!ibNavFour.isEnabled) {
-                        enableNextButton()
-                    }
-                }
-            }
-        }
-    }
+    // Timer variables
+    private lateinit var passiveTimeout: CountDownTimer
+    private lateinit var removeFromCradleTimeout: CountDownTimer
+    private var removedFromCradle = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         intentFilter.addAction(Intent.ACTION_BATTERY_CHANGED)
+
+        // setup listener to battery change (cradle detection)
         requireContext().registerReceiver(batteryChangeReceiver, intentFilter)
+        // setup "remove from cradle" timeout
+        removeFromCradleTimeout =
+            object :
+                CountDownTimer(Config.RemoveFromCradleTimeout, Config.RemoveFromCradleTimeout) {
+                override fun onTick(p0: Long) {}
+                override fun onFinish() {
+                    // release the user if the user has already been identified
+                    badge?.let {
+                        CoroutineScope(Dispatchers.IO).launch {
+                            backend.loginRelease(badge!!, accessToken)
+                        }
+                    }
+                    passiveTimeout.cancel()
+                    requireContext().unregisterReceiver(batteryChangeReceiver)
+                    requireActivity().supportFragmentManager.popBackStack()
+                }
+            }
+        // setup passive user timeout
+        passiveTimeout =
+            object : CountDownTimer(Config.PassiveTimeoutMedium, Config.PassiveTimeoutMedium) {
+                override fun onTick(p0: Long) {}
+                override fun onFinish() {
+                    // release the user if the user has already been identified
+                    badge?.let {
+                        CoroutineScope(Dispatchers.IO).launch {
+                            backend.loginRelease(badge!!, accessToken)
+                        }
+                    }
+                    removeFromCradleTimeout.cancel()
+                    requireContext().unregisterReceiver(batteryChangeReceiver)
+                    requireActivity().supportFragmentManager.popBackStack()
+                }
+            }
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        // Start timeouts
+        passiveTimeout.start()
+        removeFromCradleTimeout.start()
+        // reset timer when user clicks anywhere in screen
+        view.setOnClickListener {
+            passiveTimeout.cancel()
+            passiveTimeout.start()
+        }
 
         colorPrimaryDisabled =
             requireContext().getColor(com.google.android.material.R.color.material_on_primary_disabled)
@@ -179,6 +155,8 @@ class ProjectSelection(
                 if (type == 2) {
                     // go to filler
                     parentFragmentManager.beginTransaction().apply {
+                        removeFromCradleTimeout.cancel()
+                        passiveTimeout.cancel()
                         requireContext().unregisterReceiver(batteryChangeReceiver)
                         replace(R.id.flFragment,
                             Filler(badge!!, accessToken, backend))
@@ -227,6 +205,8 @@ class ProjectSelection(
                     .setCancelable(false)
                     .setPositiveButton("Yes") { _, _ ->
                         parentFragmentManager.beginTransaction().apply {
+                            removeFromCradleTimeout.cancel()
+                            passiveTimeout.cancel()
                             requireContext().unregisterReceiver(batteryChangeReceiver)
                             replace(R.id.flFragment,
                                 ShoppingCart(badge!!,
@@ -243,6 +223,81 @@ class ProjectSelection(
                 dialog.window?.setFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
                     WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
                 dialog.show()
+            }
+        }
+    }
+
+    private fun enableNextButton() {
+        ibNavFour.isEnabled = true
+        tvNavFour.setTextColor(colorPrimaryEnabled)
+    }
+
+    private fun initNavButtons(view: View) {
+        // First nav button
+        (view.findViewById(R.id.ibNavOne) as ImageButton).apply {
+            this.setImageResource(R.drawable.ic_minus)
+            this.isEnabled = false
+        }
+        (view.findViewById(R.id.tvNavOne) as TextView).apply {
+            this.text = "Remove"
+            this.setTextColor(colorPrimaryDisabled)
+        }
+
+        // Second nav button
+        (view.findViewById(R.id.ibNavTwo) as ImageButton).apply {
+            this.setImageResource(R.drawable.ic_arrow_back)
+            this.isEnabled = false
+        }
+        (view.findViewById(R.id.tvNavTwo) as TextView).apply {
+            this.text = "Back"
+            this.setTextColor(colorPrimaryDisabled)
+        }
+
+        // Third nav button
+        (view.findViewById(R.id.ibNavThree) as ImageButton).apply {
+            this.setImageResource(R.drawable.ic_cancel)
+            this.isEnabled = false
+        }
+        (view.findViewById(R.id.tvNavThree) as TextView).apply {
+            this.text = "Stop"
+            this.setTextColor(colorPrimaryDisabled)
+        }
+
+        // Fourth nav button
+        (view.findViewById(R.id.ibNavFour) as ImageButton).apply {
+            this.setImageResource(R.drawable.ic_next)
+            this.isEnabled = false
+        }
+        (view.findViewById(R.id.tvNavFour) as TextView).apply {
+            this.text = "Next"
+            this.setTextColor(colorPrimaryDisabled)
+        }
+    }
+
+    private fun initSpinnerProjects() {
+        sProjects.avoidDropdownFocus()
+        if (projects == null) {
+            sProjects.visibility = View.GONE
+            tvLabelProjects.visibility = View.GONE
+        }
+        sProjects.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+            override fun onNothingSelected(parent: AdapterView<*>?) {
+            }
+
+            override fun onItemSelected(
+                parent: AdapterView<*>?,
+                view: View?,
+                position: Int,
+                id: Long,
+            ) {
+                if (position >= projects!!.size)
+                    Log.e("err", "position bigger than size of projects")
+                else {
+                    selectedProject = projects!![position]
+                    if (!ibNavFour.isEnabled) {
+                        enableNextButton()
+                    }
+                }
             }
         }
     }
@@ -293,11 +348,23 @@ class ProjectSelection(
         override fun onReceive(context: Context?, intent: Intent) {
             val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
             if (status == BatteryManager.BATTERY_STATUS_CHARGING) {
-                Toast.makeText(requireContext(), "IN CRADLE", Toast.LENGTH_SHORT).show()
+                if (removedFromCradle) {
+//                    Toast.makeText(requireContext(), "IN CRADLE", Toast.LENGTH_SHORT).show()
+                    // release the user if the user has already been identified
+                    badge?.let {
+                        CoroutineScope(Dispatchers.IO).launch {
+                            backend.loginRelease(badge!!, accessToken)
+                        }
+                    }
+                    removeFromCradleTimeout.cancel()
+                    passiveTimeout.cancel()
+                    requireContext().unregisterReceiver(this)
+                    requireActivity().supportFragmentManager.popBackStack()
+                }
             }
             if (status == BatteryManager.BATTERY_STATUS_DISCHARGING) {
-                Toast.makeText(requireContext(), "REMOVED FROM CRADLE", Toast.LENGTH_SHORT)
-                    .show()
+                removedFromCradle = true
+                removeFromCradleTimeout.cancel()
             }
         }
     }

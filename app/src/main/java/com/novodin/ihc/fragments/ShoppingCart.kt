@@ -8,6 +8,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.BatteryManager
 import android.os.Bundle
+import android.os.CountDownTimer
 import androidx.fragment.app.Fragment
 import android.view.View
 import android.view.WindowManager
@@ -18,6 +19,7 @@ import androidx.fragment.app.setFragmentResultListener
 import androidx.recyclerview.widget.RecyclerView
 import com.novodin.ihc.R
 import com.novodin.ihc.adapters.ArticleRecyclerViewAdapter
+import com.novodin.ihc.config.Config
 import com.novodin.ihc.model.Article
 import com.novodin.ihc.model.QuantityType
 import com.novodin.ihc.network.Backend
@@ -58,6 +60,121 @@ class ShoppingCart(
 
     // Barcode scanner
     private lateinit var barcodeScanner: BarcodeScanner
+
+    // Timer variables
+    private lateinit var passiveTimeout: CountDownTimer
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        intentFilter.addAction(Intent.ACTION_BATTERY_CHANGED)
+        requireContext().registerReceiver(batteryChangeReceiver, intentFilter)
+
+        // setup passive user timeout
+        passiveTimeout =
+            object : CountDownTimer(Config.PassiveTimeoutLong, Config.PassiveTimeoutLong) {
+                override fun onTick(p0: Long) {}
+                override fun onFinish() {
+                    // release the user
+                    CoroutineScope(Dispatchers.IO).launch {
+                        backend.loginRelease(badge!!, accessToken)
+                    }
+                    requireContext().unregisterReceiver(batteryChangeReceiver)
+                    requireActivity().supportFragmentManager.popBackStack()
+                }
+            }
+
+        setFragmentResultListener("approveLogin") { _, bundle ->
+            // We use a String here, but any type that can be put in a Bundle is supported
+            val success = bundle.getBoolean("success")
+            val accessToken = bundle.getString("accessToken")
+
+            if (!success) {
+                Toast.makeText(requireContext(), "Not an approver badge", Toast.LENGTH_LONG)
+                    .show()
+                return@setFragmentResultListener
+            }
+
+            try {
+                this.accessToken = accessToken!!
+                approvalState = true
+            } catch (e: NullPointerException) {
+                println("something went wrong $e")
+            }
+        }
+        CoroutineScope(Dispatchers.IO).launch {
+            val cartIdResponse = backend.createCart(projectId, accessToken)
+            cartId = cartIdResponse!!.getInt("id")
+        }
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        // Start timeout
+        passiveTimeout.start()
+        // reset timer when user clicks anywhere in screen
+        view.setOnClickListener {
+            passiveTimeout.cancel()
+            passiveTimeout.start()
+        }
+
+        colorPrimaryDisabled =
+            requireContext().getColor(com.google.android.material.R.color.material_on_primary_disabled)
+        colorPrimaryEnabled =
+            requireContext().getColor(com.google.android.material.R.color.material_on_primary_emphasis_high_type)
+
+        initNavButtons(view)
+        // init view elements
+        rvArticleList = view.findViewById(R.id.rvArticleList) as RecyclerView
+        tvItemCount = view.findViewById(R.id.tvItemCount) as TextView
+        tvPUCount = view.findViewById(R.id.tvPUCount) as TextView
+        tvUnitCount = view.findViewById(R.id.tvUnitCount) as TextView
+
+        tvItemCount.text = itemCount.toString()
+        tvPUCount.text = puCount.toString()
+        tvUnitCount.text = unitCount.toString()
+
+        rvArticleList.adapter = ArticleRecyclerViewAdapter(articleList)
+        (rvArticleList.adapter as ArticleRecyclerViewAdapter).setOnItemSelectExtra { enablePlusMinus() }
+
+        ibNavOne = view.findViewById(R.id.ibNavOne) as ImageButton
+        ibNavThree = view.findViewById(R.id.ibNavThree) as ImageButton
+        ibNavFour = view.findViewById(R.id.ibNavFour) as ImageButton
+
+        tvNavOne = view.findViewById(R.id.tvNavOne) as TextView
+        tvNavFour = view.findViewById(R.id.tvNavFour) as TextView
+
+        ibNavOne.setOnClickListener { remove() }
+        ibNavThree.setOnClickListener { stop() }
+        ibNavFour.setOnClickListener { add() }
+    }
+
+    // should enter here after returning from approval login
+    // does not go back into onCreate!
+    override fun onResume() {
+        super.onResume()
+        barcodeScanner = BarcodeScanner(requireContext())
+        barcodeScanner.setDataCallback(::dataCallback)
+        barcodeScanner.setStatusCallback(::statusCallback)
+
+        // Start timeout
+        passiveTimeout.start()
+        // reset timer when user clicks anywhere in screen
+        requireView().setOnClickListener {
+            passiveTimeout.cancel()
+            passiveTimeout.start()
+        }
+        // reregister intent receiver
+        requireContext().registerReceiver(batteryChangeReceiver, intentFilter)
+
+        initNavButtons(requireView())
+    }
+
+    override fun onPause() {
+        super.onPause()
+        barcodeScanner.onClosed()
+        passiveTimeout.cancel()
+    }
 
     private fun initNavButtons(view: View) {
         // First nav button
@@ -112,67 +229,6 @@ class ShoppingCart(
         }
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        intentFilter.addAction(Intent.ACTION_BATTERY_CHANGED)
-        requireContext().registerReceiver(batteryChangeReceiver, intentFilter)
-        setFragmentResultListener("approveLogin") { _, bundle ->
-            // We use a String here, but any type that can be put in a Bundle is supported
-            val success = bundle.getBoolean("success")
-            val accessToken = bundle.getString("accessToken")
-
-            if (!success) {
-                Toast.makeText(requireContext(), "Not an approver badge", Toast.LENGTH_LONG)
-                    .show()
-                return@setFragmentResultListener
-            }
-
-            try {
-                this.accessToken = accessToken!!
-                approvalState = true
-            } catch (e: NullPointerException) {
-                println("something went wrong $e")
-            }
-        }
-        CoroutineScope(Dispatchers.IO).launch {
-            val cartIdResponse = backend.createCart(projectId, accessToken)
-            cartId = cartIdResponse!!.getInt("id")
-        }
-    }
-
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-        colorPrimaryDisabled =
-            requireContext().getColor(com.google.android.material.R.color.material_on_primary_disabled)
-        colorPrimaryEnabled =
-            requireContext().getColor(com.google.android.material.R.color.material_on_primary_emphasis_high_type)
-
-        initNavButtons(view)
-        // init view elements
-        rvArticleList = view.findViewById(R.id.rvArticleList) as RecyclerView
-        tvItemCount = view.findViewById(R.id.tvItemCount) as TextView
-        tvPUCount = view.findViewById(R.id.tvPUCount) as TextView
-        tvUnitCount = view.findViewById(R.id.tvUnitCount) as TextView
-
-        tvItemCount.text = itemCount.toString()
-        tvPUCount.text = puCount.toString()
-        tvUnitCount.text = unitCount.toString()
-
-        rvArticleList.adapter = ArticleRecyclerViewAdapter(articleList)
-        (rvArticleList.adapter as ArticleRecyclerViewAdapter).setOnItemSelectExtra { enablePlusMinus() }
-
-        ibNavOne = view.findViewById(R.id.ibNavOne) as ImageButton
-        ibNavThree = view.findViewById(R.id.ibNavThree) as ImageButton
-        ibNavFour = view.findViewById(R.id.ibNavFour) as ImageButton
-
-        tvNavOne = view.findViewById(R.id.tvNavOne) as TextView
-        tvNavFour = view.findViewById(R.id.tvNavFour) as TextView
-
-        ibNavOne.setOnClickListener { remove() }
-        ibNavThree.setOnClickListener { stop() }
-        ibNavFour.setOnClickListener { add() }
-    }
-
     private fun enablePlusMinus() {
         if (!(ibNavOne.isEnabled || ibNavFour.isEnabled)) {
             ibNavOne.isEnabled = true
@@ -189,23 +245,6 @@ class ShoppingCart(
             ibNavFour.isEnabled = false
             tvNavFour.setTextColor(colorPrimaryDisabled)
         }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        barcodeScanner = BarcodeScanner(requireContext())
-        barcodeScanner.setDataCallback(::dataCallback)
-        barcodeScanner.setStatusCallback(::statusCallback)
-
-        // Sanity null check, view should always exist here
-        view?.let {
-            initNavButtons(it)
-        }
-    }
-
-    override fun onPause() {
-        super.onPause()
-        barcodeScanner.onClosed()
     }
 
     private fun statusCallback(message: String) {
@@ -329,9 +368,10 @@ class ShoppingCart(
                 .setPositiveButton("Yes") { _, _ ->
                     barcodeScanner.onClosed()
                     CoroutineScope(Dispatchers.IO).launch {
+                        passiveTimeout.cancel()
+                        requireContext().unregisterReceiver(batteryChangeReceiver)
                         backend.approve(cartId, accessToken, JSONArray(articleList))
                         backend.loginRelease(badge, accessToken)
-
                     }
                     Toast.makeText(requireContext(), "Successfully approved", Toast.LENGTH_LONG)
                         .show()
@@ -352,6 +392,7 @@ class ShoppingCart(
                 .setCancelable(false)
                 .setPositiveButton("Verify") { _, _ ->
                     parentFragmentManager.beginTransaction().apply {
+                        passiveTimeout.cancel()
                         requireContext().unregisterReceiver(batteryChangeReceiver)
                         CoroutineScope(Dispatchers.IO).launch {
                             backend.loginRelease(badge, accessToken)
@@ -375,11 +416,13 @@ class ShoppingCart(
         override fun onReceive(context: Context?, intent: Intent) {
             val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
             if (status == BatteryManager.BATTERY_STATUS_CHARGING) {
-                Toast.makeText(requireContext(), "IN CRADLE", Toast.LENGTH_SHORT).show()
-            }
-            if (status == BatteryManager.BATTERY_STATUS_DISCHARGING) {
-                Toast.makeText(requireContext(), "REMOVED FROM CRADLE", Toast.LENGTH_SHORT)
-                    .show()
+                CoroutineScope(Dispatchers.IO).launch {
+                    backend.loginRelease(badge!!, accessToken)
+                }
+                passiveTimeout.cancel()
+                requireContext().unregisterReceiver(this)
+                requireActivity().supportFragmentManager.popBackStack()
+
             }
         }
     }
