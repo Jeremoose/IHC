@@ -61,7 +61,8 @@ class ProjectSelection(
         // setup "remove from cradle" timeout
         removeFromCradleTimeout =
             object :
-                CountDownTimer(Config.RemoveFromCradleTimeout, Config.RemoveFromCradleTimeout) {
+                CountDownTimer(Config.PassiveRemoveFromCradleTimeout,
+                    Config.PassiveRemoveFromCradleTimeout) {
                 override fun onTick(p0: Long) {}
                 override fun onFinish() {
                     // release the user if the user has already been identified
@@ -97,7 +98,6 @@ class ProjectSelection(
         super.onViewCreated(view, savedInstanceState)
 
         // Start timeouts
-        passiveTimeout.start()
         removeFromCradleTimeout.start()
         // reset timer when user clicks anywhere in screen
         view.setOnClickListener {
@@ -365,6 +365,7 @@ class ProjectSelection(
             if (status == BatteryManager.BATTERY_STATUS_DISCHARGING) {
                 removedFromCradle = true
                 removeFromCradleTimeout.cancel()
+                passiveTimeout.start()
             }
         }
     }

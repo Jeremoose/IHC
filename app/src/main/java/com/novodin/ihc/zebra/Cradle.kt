@@ -1,6 +1,7 @@
 package com.novodin.ihc.zebra
 
 import android.content.Context
+import com.novodin.ihc.config.Config
 import com.symbol.emdk.EMDKManager
 import com.symbol.emdk.EMDKManager.EMDKListener
 import com.symbol.emdk.EMDKManager.FEATURE_TYPE
@@ -29,7 +30,8 @@ class Cradle(context: Context) : EMDKListener {
         try {
             if (!personalShopper.cradle.isEnabled) personalShopper.cradle.enable()
             val ledFlashInfo = CradleLedFlashInfo(100, 500, true)
-            val result = personalShopper.cradle.unlock(30, ledFlashInfo) // 30 seconds
+            val result =
+                personalShopper.cradle.unlock((Config.PassiveRemoveFromCradleTimeout / 1000).toInt(), ledFlashInfo) // time is in SECONDS: min 10 seconds, max 30 seconds
 
             return result == CradleResults.SUCCESS
         } catch (e: CradleException) {
