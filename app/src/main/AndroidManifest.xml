@@ -18,18 +18,18 @@
         android:theme="@style/Theme.IHC"
         android:usesCleartextTraffic="true"
         tools:targetApi="31">
-<!--        <activity-->
-<!--            android:name=".FullscreenActivity"-->
-<!--            android:configChanges="orientation|keyboardHidden|screenSize"-->
-<!--            android:exported="false"-->
-<!--            android:label="@string/title_activity_fullscreen"-->
-<!--            android:theme="@style/Theme.IHC.Fullscreen" />-->
-<!--        <activity-->
-<!--            android:name=".FullscreenActivitytest"-->
-<!--            android:configChanges="orientation|keyboardHidden|screenSize"-->
-<!--            android:exported="false"-->
-<!--            android:label="@string/title_activity_fullscreen_activitytest"-->
-<!--            android:theme="@style/Theme.IHC.Fullscreen" />-->
+        <!--        <activity-->
+        <!--            android:name=".FullscreenActivity"-->
+        <!--            android:configChanges="orientation|keyboardHidden|screenSize"-->
+        <!--            android:exported="false"-->
+        <!--            android:label="@string/title_activity_fullscreen"-->
+        <!--            android:theme="@style/Theme.IHC.Fullscreen" />-->
+        <!--        <activity-->
+        <!--            android:name=".FullscreenActivitytest"-->
+        <!--            android:configChanges="orientation|keyboardHidden|screenSize"-->
+        <!--            android:exported="false"-->
+        <!--            android:label="@string/title_activity_fullscreen_activitytest"-->
+        <!--            android:theme="@style/Theme.IHC.Fullscreen" />-->
 
         <uses-library android:name="com.symbol.emdk" />
 
@@ -40,6 +40,14 @@
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.symbol.intent.device.DOCKED" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.symbol.intent.device.UNDOCKED" />
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
     </application>

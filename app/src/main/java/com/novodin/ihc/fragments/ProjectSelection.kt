@@ -20,6 +20,7 @@ import com.novodin.ihc.R
 import com.novodin.ihc.config.Config
 import com.novodin.ihc.model.Project
 import com.novodin.ihc.network.Backend
+import com.novodin.ihc.zebra.CradleIntentActions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -51,14 +52,14 @@ class ProjectSelection(
     // Timer variables
     private lateinit var passiveTimeout: CountDownTimer
     private lateinit var removeFromCradleTimeout: CountDownTimer
-    private var removedFromCradle = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        intentFilter.addAction(Intent.ACTION_BATTERY_CHANGED)
+        intentFilter.addAction(CradleIntentActions.DOCKED.toString())
+        intentFilter.addAction(CradleIntentActions.UNDOCKED.toString())
 
         // setup listener to battery change (cradle detection)
-        requireContext().registerReceiver(batteryChangeReceiver, intentFilter)
+        requireContext().registerReceiver(dockChangeReceiver, intentFilter)
         // setup "remove from cradle" timeout
         removeFromCradleTimeout =
             object :
@@ -73,11 +74,12 @@ class ProjectSelection(
                         }
                     }
                     passiveTimeout.cancel()
-                    Log.d("ProjectSelection:debug_unregister_fatal", "removefromcradletimeout unregister")
+                    Log.d("ProjectSelection:debug_unregister_fatal",
+                        "removefromcradletimeout unregister")
                     try {
-                        requireContext().unregisterReceiver(batteryChangeReceiver)
+                        requireContext().unregisterReceiver(dockChangeReceiver)
 
-                    } catch(e: IllegalArgumentException  ) {
+                    } catch (e: IllegalArgumentException) {
                         Log.d("ProjectSelection:debug_unregister_catch",
                             "removefromcradletimeout unregister error: $e")
                     }
@@ -86,7 +88,7 @@ class ProjectSelection(
             }
         // setup passive user timeout
         passiveTimeout =
-            object : CountDownTimer(Config.PassiveTimeoutMedium , Config.PassiveTimeoutMedium ) {
+            object : CountDownTimer(Config.PassiveTimeoutMedium, Config.PassiveTimeoutMedium) {
                 override fun onTick(p0: Long) {}
                 override fun onFinish() {
                     // release the user if the user has already been identified
@@ -98,9 +100,9 @@ class ProjectSelection(
                     removeFromCradleTimeout.cancel()
                     Log.d("ProjectSelection:debug_unregister_fatal", "passivetimeout unregister")
                     try {
-                        requireContext().unregisterReceiver(batteryChangeReceiver)
+                        requireContext().unregisterReceiver(dockChangeReceiver)
 
-                    } catch(e: IllegalArgumentException  ) {
+                    } catch (e: IllegalArgumentException) {
                         Log.d("ProjectSelection:debug_unregister_catch",
                             "passivetimeout unregister error: $e")
                     }
@@ -118,7 +120,8 @@ class ProjectSelection(
         // reset timer when user clicks anywhere in screen
         view.setOnClickListener {
             passiveTimeout.cancel()
-            Log.d("ProjectSelection:debug_double-passivetimeout", "passivetimeout start - onViewCreated setOnClickListener")
+            Log.d("ProjectSelection:debug_double-passivetimeout",
+                "passivetimeout start - onViewCreated setOnClickListener")
             passiveTimeout.start()
         }
 
@@ -174,7 +177,7 @@ class ProjectSelection(
                     parentFragmentManager.beginTransaction().apply {
                         removeFromCradleTimeout.cancel()
                         passiveTimeout.cancel()
-                        requireContext().unregisterReceiver(batteryChangeReceiver)
+                        requireContext().unregisterReceiver(dockChangeReceiver)
                         replace(R.id.flFragment,
                             Filler(badge!!, accessToken, backend))
                         commit()
@@ -224,7 +227,7 @@ class ProjectSelection(
                         parentFragmentManager.beginTransaction().apply {
                             removeFromCradleTimeout.cancel()
                             passiveTimeout.cancel()
-                            requireContext().unregisterReceiver(batteryChangeReceiver)
+                            requireContext().unregisterReceiver(dockChangeReceiver)
                             replace(R.id.flFragment,
                                 ShoppingCart(badge!!,
                                     project.id,
@@ -361,41 +364,37 @@ class ProjectSelection(
         }
     }
 
-    private val batteryChangeReceiver: BroadcastReceiver = object : BroadcastReceiver() {
+    private val dockChangeReceiver: BroadcastReceiver = object : BroadcastReceiver() {
         @RequiresApi(Build.VERSION_CODES.Q)
         override fun onReceive(context: Context?, intent: Intent) {
-            val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
-            if (status == BatteryManager.BATTERY_STATUS_CHARGING) {
-                if (removedFromCradle) {
-                    Log.d("ProjectSelection:debug_unregister_fatal",
-                        "entered battery charging, removed from cradle == true")
-//                    Toast.makeText(requireContext(), "IN CRADLE", Toast.LENGTH_SHORT).show()
-                    // release the user if the user has already been identified
-                    badge?.let {
-                        CoroutineScope(Dispatchers.IO).launch {
-                            backend.loginRelease(badge!!, accessToken)
-                        }
+            Log.d("debug_unregister_fatal_intent", "action: ${intent.action}")
+            if (intent.action == "com.symbol.intent.device.DOCKED") {
+                // 1. release user
+                // 2. stop cradletimeout
+                // 3. stop passive timeout
+                // 4. unregister receiver
+                // 5. pop backstack
+                badge?.let {
+                    CoroutineScope(Dispatchers.IO).launch {
+                        backend.loginRelease(badge!!, accessToken)
                     }
-                    removeFromCradleTimeout.cancel()
-                    passiveTimeout.cancel()
-                    Log.d("ProjectSelection:debug_unregister_fatal",
-                        "battery_status_charging and unregistering receiver here")
-                    try {
-                        requireContext().unregisterReceiver(this)
-
-                    } catch (e: IllegalArgumentException) {
-                        Log.d("ProjectSelection:debug_unregister_catch",
-                            "battery_status_charging and unregistering receiver here error: $e")
-                    }
-                    requireActivity().supportFragmentManager.popBackStack()
                 }
-            }
-            if (status == BatteryManager.BATTERY_STATUS_DISCHARGING) {
-                Log.d("ProjectSelection:debug_unregister_fatal", "entered battery discharging")
-                Log.d("ProjectSelection:debug_unregister_fatal", "all intent info: ${intent.`package`} ${intent.type} ${intent.action} $intent ${intent.toString()}")
-                removedFromCradle = true
                 removeFromCradleTimeout.cancel()
-                Log.d("ProjectSelection:debug_double-passivetimeout", "passivetimeout start - batteryChangeReceiver")
+                passiveTimeout.cancel()
+                try {
+                    requireContext().unregisterReceiver(this)
+
+                } catch (e: IllegalArgumentException) {
+                    Log.d("ProjectSelection:debug_unregister_catch",
+                        "battery_status_charging and unregistering receiver here error: $e")
+                }
+                requireActivity().supportFragmentManager.popBackStack()
+            }
+
+            if (intent.action == "com.symbol.intent.device.UNDOCKED") {
+                // 1. stop cradle timeout
+                // 2. start passive timeout
+                removeFromCradleTimeout.cancel()
                 passiveTimeout.start()
             }
         }
