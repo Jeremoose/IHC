@@ -1,6 +1,7 @@
 package com.novodin.ihc.zebra
 
 import android.content.Context
+import android.util.Log
 import com.novodin.ihc.config.Config
 import com.symbol.emdk.EMDKManager
 import com.symbol.emdk.EMDKManager.EMDKListener
@@ -10,6 +11,8 @@ import com.symbol.emdk.personalshopper.CradleException
 import com.symbol.emdk.personalshopper.CradleLedFlashInfo
 import com.symbol.emdk.personalshopper.CradleResults
 import com.symbol.emdk.personalshopper.PersonalShopper
+import java.text.SimpleDateFormat
+import java.util.*
 
 
 class Cradle(context: Context) : EMDKListener {
@@ -22,6 +25,7 @@ class Cradle(context: Context) : EMDKListener {
     }
 
     fun unlock(): Boolean {
+        Log.d("debug_unregister_fatal", "unlock at: " + SimpleDateFormat("yyyy-dd-mm hh:mm:ss").format(Date()))
         val personalShopper =
             emdkManager!!.getInstance(FEATURE_TYPE.PERSONALSHOPPER) as PersonalShopper
 

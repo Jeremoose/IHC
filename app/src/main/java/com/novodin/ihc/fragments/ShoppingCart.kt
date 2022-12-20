@@ -9,6 +9,7 @@ import android.content.IntentFilter
 import android.os.BatteryManager
 import android.os.Bundle
 import android.os.CountDownTimer
+import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.View
 import android.view.WindowManager
@@ -78,7 +79,13 @@ class ShoppingCart(
                     CoroutineScope(Dispatchers.IO).launch {
                         backend.loginRelease(badge!!, accessToken)
                     }
-                    requireContext().unregisterReceiver(batteryChangeReceiver)
+                    Log.d("ShoppingCart:debug_unregister_fatal", "passivetimeout unregister")
+                    try {
+                        requireContext().unregisterReceiver(batteryChangeReceiver)
+                    } catch(e: IllegalArgumentException  ) {
+                        Log.d("ShoppingCart:debug_unregister_catch",
+                            "passivetimeout unregister error: $e")
+                    }
                     requireActivity().supportFragmentManager.popBackStack()
                 }
             }
@@ -111,10 +118,12 @@ class ShoppingCart(
         super.onViewCreated(view, savedInstanceState)
 
         // Start timeout
+        Log.d("ShoppingCart:debug_double-passivetimeout", "passivetimeout start - onViewCreated")
         passiveTimeout.start()
         // reset timer when user clicks anywhere in screen
         view.setOnClickListener {
             passiveTimeout.cancel()
+            Log.d("ShoppingCart:debug_double-passivetimeout", "passivetimeout start - onViewCreated 0 onClikcListener")
             passiveTimeout.start()
         }
 
@@ -158,10 +167,12 @@ class ShoppingCart(
         barcodeScanner.setStatusCallback(::statusCallback)
 
         // Start timeout
+        Log.d("ShoppingCart:debug_double-passivetimeout", "passivetimeout start - onResume")
         passiveTimeout.start()
         // reset timer when user clicks anywhere in screen
         requireView().setOnClickListener {
             passiveTimeout.cancel()
+            Log.d("ShoppingCart:debug_double-passivetimeout", "passivetimeout start - onResume - onClickListener")
             passiveTimeout.start()
         }
         // reregister intent receiver
@@ -420,9 +431,14 @@ class ShoppingCart(
                     backend.loginRelease(badge!!, accessToken)
                 }
                 passiveTimeout.cancel()
-                requireContext().unregisterReceiver(this)
+                Log.d("ShoppingCart:debug_unregister_fatal", "battery_status_charging and unregistering receiver here")
+                try {
+                    requireContext().unregisterReceiver(this)
+                } catch(e: IllegalArgumentException  ) {
+                    Log.d("ShoppingCart:debug_unregister_catch",
+                        "battery_status_charging and unregistering receiver here error: $e")
+                }
                 requireActivity().supportFragmentManager.popBackStack()
-
             }
         }
     }
