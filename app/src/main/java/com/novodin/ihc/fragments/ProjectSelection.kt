@@ -20,7 +20,6 @@ import com.novodin.ihc.R
 import com.novodin.ihc.config.Config
 import com.novodin.ihc.model.Project
 import com.novodin.ihc.network.Backend
-import com.novodin.ihc.zebra.CradleIntentActions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -55,8 +54,8 @@ class ProjectSelection(
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        intentFilter.addAction(CradleIntentActions.DOCKED.toString())
-        intentFilter.addAction(CradleIntentActions.UNDOCKED.toString())
+        intentFilter.addAction("com.symbol.intent.device.DOCKED")
+        intentFilter.addAction("com.symbol.intent.device.UNDOCKED")
 
         // setup listener to battery change (cradle detection)
         requireContext().registerReceiver(dockChangeReceiver, intentFilter)
@@ -119,10 +118,7 @@ class ProjectSelection(
 //        passiveTimeout.start()
         // reset timer when user clicks anywhere in screen
         view.setOnClickListener {
-            passiveTimeout.cancel()
-            Log.d("ProjectSelection:debug_double-passivetimeout",
-                "passivetimeout start - onViewCreated setOnClickListener")
-            passiveTimeout.start()
+            resetPassiveTimeout()
         }
 
         colorPrimaryDisabled =
@@ -310,6 +306,7 @@ class ProjectSelection(
                 position: Int,
                 id: Long,
             ) {
+                resetPassiveTimeout()
                 if (position >= projects!!.size)
                     Log.e("err", "position bigger than size of projects")
                 else {
@@ -398,5 +395,12 @@ class ProjectSelection(
                 passiveTimeout.start()
             }
         }
+    }
+
+    private fun resetPassiveTimeout() {
+        passiveTimeout.cancel()
+        Log.d("ProjectSelection:debug_double-passivetimeout",
+            "reset passive timeout")
+        passiveTimeout.start()
     }
 }

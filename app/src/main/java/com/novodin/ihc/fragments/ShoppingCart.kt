@@ -67,8 +67,8 @@ class ShoppingCart(
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        intentFilter.addAction(Intent.ACTION_BATTERY_CHANGED)
-        requireContext().registerReceiver(batteryChangeReceiver, intentFilter)
+        intentFilter.addAction("com.symbol.intent.device.DOCKED")
+        requireContext().registerReceiver(dockChangeReceiver, intentFilter)
 
         // setup passive user timeout
         passiveTimeout =
@@ -81,8 +81,8 @@ class ShoppingCart(
                     }
                     Log.d("ShoppingCart:debug_unregister_fatal", "passivetimeout unregister")
                     try {
-                        requireContext().unregisterReceiver(batteryChangeReceiver)
-                    } catch(e: IllegalArgumentException  ) {
+                        requireContext().unregisterReceiver(dockChangeReceiver)
+                    } catch (e: IllegalArgumentException) {
                         Log.d("ShoppingCart:debug_unregister_catch",
                             "passivetimeout unregister error: $e")
                     }
@@ -119,13 +119,10 @@ class ShoppingCart(
 
         // Start timeout
         Log.d("ShoppingCart:debug_double-passivetimeout", "passivetimeout start - onViewCreated")
-        passiveTimeout.start()
         // reset timer when user clicks anywhere in screen
-        view.setOnClickListener {
-            passiveTimeout.cancel()
-            Log.d("ShoppingCart:debug_double-passivetimeout", "passivetimeout start - onViewCreated 0 onClikcListener")
-            passiveTimeout.start()
-        }
+//        view.setOnClickListener {
+//            resetPassiveTimeout()
+//        }
 
         colorPrimaryDisabled =
             requireContext().getColor(com.google.android.material.R.color.material_on_primary_disabled)
@@ -156,6 +153,8 @@ class ShoppingCart(
         ibNavOne.setOnClickListener { remove() }
         ibNavThree.setOnClickListener { stop() }
         ibNavFour.setOnClickListener { add() }
+
+        view.rootView.setOnClickListener { resetPassiveTimeout() }
     }
 
     // should enter here after returning from approval login
@@ -170,13 +169,9 @@ class ShoppingCart(
         Log.d("ShoppingCart:debug_double-passivetimeout", "passivetimeout start - onResume")
         passiveTimeout.start()
         // reset timer when user clicks anywhere in screen
-        requireView().setOnClickListener {
-            passiveTimeout.cancel()
-            Log.d("ShoppingCart:debug_double-passivetimeout", "passivetimeout start - onResume - onClickListener")
-            passiveTimeout.start()
-        }
+//        requireView().findViewById<R.id.>()
         // reregister intent receiver
-        requireContext().registerReceiver(batteryChangeReceiver, intentFilter)
+        requireContext().registerReceiver(dockChangeReceiver, intentFilter)
 
         initNavButtons(requireView())
     }
@@ -263,6 +258,7 @@ class ShoppingCart(
     }
 
     private fun dataCallback(barcode: String) {
+        resetPassiveTimeout()
         if (cartId == 0) {
             Toast.makeText(requireContext(),
                 "not finished initializing...",
@@ -380,7 +376,7 @@ class ShoppingCart(
                     barcodeScanner.onClosed()
                     CoroutineScope(Dispatchers.IO).launch {
                         passiveTimeout.cancel()
-                        requireContext().unregisterReceiver(batteryChangeReceiver)
+                        requireContext().unregisterReceiver(dockChangeReceiver)
                         backend.approve(cartId, accessToken, JSONArray(articleList))
                         backend.loginRelease(badge, accessToken)
                     }
@@ -404,7 +400,7 @@ class ShoppingCart(
                 .setPositiveButton("Verify") { _, _ ->
                     parentFragmentManager.beginTransaction().apply {
                         passiveTimeout.cancel()
-                        requireContext().unregisterReceiver(batteryChangeReceiver)
+                        requireContext().unregisterReceiver(dockChangeReceiver)
                         CoroutineScope(Dispatchers.IO).launch {
                             backend.loginRelease(badge, accessToken)
                         }
@@ -423,23 +419,36 @@ class ShoppingCart(
         }
     }
 
-    private val batteryChangeReceiver: BroadcastReceiver = object : BroadcastReceiver() {
+    private val dockChangeReceiver: BroadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent) {
-            val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
-            if (status == BatteryManager.BATTERY_STATUS_CHARGING) {
-                CoroutineScope(Dispatchers.IO).launch {
-                    backend.loginRelease(badge!!, accessToken)
+            if (intent.action == "com.symbol.intent.device.DOCKED") {
+                // 1. release user
+                // 2. stop cradletimeout
+                // 3. stop passive timeout
+                // 4. unregister receiver
+                // 5. pop backstack
+                badge?.let {
+                    CoroutineScope(Dispatchers.IO).launch {
+                        backend.loginRelease(badge!!, accessToken)
+                    }
                 }
                 passiveTimeout.cancel()
-                Log.d("ShoppingCart:debug_unregister_fatal", "battery_status_charging and unregistering receiver here")
                 try {
                     requireContext().unregisterReceiver(this)
-                } catch(e: IllegalArgumentException  ) {
-                    Log.d("ShoppingCart:debug_unregister_catch",
+
+                } catch (e: IllegalArgumentException) {
+                    Log.d("ProjectSelection:debug_unregister_catch",
                         "battery_status_charging and unregistering receiver here error: $e")
                 }
                 requireActivity().supportFragmentManager.popBackStack()
             }
         }
+    }
+
+    private fun resetPassiveTimeout() {
+        passiveTimeout.cancel()
+        Log.d("ProjectSelection:debug_double-passivetimeout",
+            "reset passive timeout")
+        passiveTimeout.start()
     }
 }
