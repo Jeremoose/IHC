@@ -76,6 +76,16 @@ class ShoppingCart(
             object : CountDownTimer(Config.PassiveTimeoutLong, Config.PassiveTimeoutLong) {
                 override fun onTick(p0: Long) {}
                 override fun onFinish() {
+
+                    if (approvalState) {
+                        barcodeScanner.onClosed()
+                        CoroutineScope(Dispatchers.IO).launch {
+                            backend.approve(cartId, accessToken, JSONArray(articleList))
+                        }
+                        Toast.makeText(requireContext(), "Successfully approved", Toast.LENGTH_LONG)
+                            .show()
+                    }
+
                     // release the user
                     CoroutineScope(Dispatchers.IO).launch {
                         backend.loginRelease(badge!!, accessToken)

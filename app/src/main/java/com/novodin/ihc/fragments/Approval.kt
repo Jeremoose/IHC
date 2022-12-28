@@ -54,6 +54,7 @@ class Approval(private var backend: Backend) : Fragment(R.layout.fragment_projec
                 override fun onFinish() {
                     // release the user if the user has already been identified
                     requireContext().unregisterReceiver(batteryChangeReceiver)
+                    runnable?.let { handler.removeCallbacks(it) }
                     requireActivity().supportFragmentManager.popBackStack()
                 }
             }
@@ -126,6 +127,7 @@ class Approval(private var backend: Backend) : Fragment(R.layout.fragment_projec
                     bundleOf(Pair("success", userType == 1),
                         Pair("accessToken", if (userType == 1) accessToken else "")))
                 passiveTimeout.cancel()
+                handler.removeCallbacks(runnable)
                 requireContext().unregisterReceiver(batteryChangeReceiver)
                 requireActivity().supportFragmentManager.popBackStack()
             }
