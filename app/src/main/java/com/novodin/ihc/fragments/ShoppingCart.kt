@@ -12,6 +12,7 @@ import android.os.CountDownTimer
 import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.View
+import android.view.ViewTreeObserver
 import android.view.WindowManager
 import android.widget.ImageButton
 import android.widget.TextView
@@ -124,6 +125,7 @@ class ShoppingCart(
 //            resetPassiveTimeout()
 //        }
 
+
         colorPrimaryDisabled =
             requireContext().getColor(com.google.android.material.R.color.material_on_primary_disabled)
         colorPrimaryEnabled =
@@ -154,7 +156,6 @@ class ShoppingCart(
         ibNavThree.setOnClickListener { stop() }
         ibNavFour.setOnClickListener { add() }
 
-        view.rootView.setOnClickListener { resetPassiveTimeout() }
     }
 
     // should enter here after returning from approval login
@@ -172,6 +173,10 @@ class ShoppingCart(
 //        requireView().findViewById<R.id.>()
         // reregister intent receiver
         requireContext().registerReceiver(dockChangeReceiver, intentFilter)
+
+        requireView().viewTreeObserver.addOnGlobalLayoutListener {
+            resetPassiveTimeout()
+        }
 
         initNavButtons(requireView())
     }
