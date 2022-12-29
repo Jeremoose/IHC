@@ -73,7 +73,7 @@ class ShoppingCart(
 
         // setup passive user timeout
         passiveTimeout =
-            object : CountDownTimer(Config.PassiveTimeoutLong, Config.PassiveTimeoutLong) {
+            object : CountDownTimer(Config.PassiveTimeoutLong.toLong(), Config.PassiveTimeoutLong.toLong()) {
                 override fun onTick(p0: Long) {}
                 override fun onFinish() {
 
@@ -273,6 +273,7 @@ class ShoppingCart(
     }
 
     private fun dataCallback(barcode: String) {
+        Log.d("scan", barcode)
         resetPassiveTimeout()
         if (cartId == 0) {
             Toast.makeText(requireContext(),

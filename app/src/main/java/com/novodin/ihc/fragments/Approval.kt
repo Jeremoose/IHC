@@ -49,7 +49,7 @@ class Approval(private var backend: Backend) : Fragment(R.layout.fragment_projec
         intentFilter.addAction(Intent.ACTION_BATTERY_CHANGED)
         requireContext().registerReceiver(batteryChangeReceiver, intentFilter)
         passiveTimeout =
-            object : CountDownTimer(Config.PassiveTimeoutShort, Config.PassiveTimeoutShort) {
+            object : CountDownTimer(Config.PassiveTimeoutShort.toLong(), Config.PassiveTimeoutShort.toLong()) {
                 override fun onTick(p0: Long) {}
                 override fun onFinish() {
                     // release the user if the user has already been identified

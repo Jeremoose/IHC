@@ -62,8 +62,8 @@ class ProjectSelection(
         // setup "remove from cradle" timeout
         removeFromCradleTimeout =
             object :
-                CountDownTimer(Config.PassiveRemoveFromCradleTimeout,
-                    Config.PassiveRemoveFromCradleTimeout) {
+                CountDownTimer(Config.PassiveRemoveFromCradleTimeout.toLong(),
+                    Config.PassiveRemoveFromCradleTimeout.toLong()) {
                 override fun onTick(p0: Long) {}
                 override fun onFinish() {
                     // release the user if the user has already been identified
@@ -87,7 +87,7 @@ class ProjectSelection(
             }
         // setup passive user timeout
         passiveTimeout =
-            object : CountDownTimer(Config.PassiveTimeoutMedium, Config.PassiveTimeoutMedium) {
+            object : CountDownTimer(Config.PassiveTimeoutMedium.toLong(), Config.PassiveTimeoutMedium.toLong()) {
                 override fun onTick(p0: Long) {}
                 override fun onFinish() {
                     // release the user if the user has already been identified

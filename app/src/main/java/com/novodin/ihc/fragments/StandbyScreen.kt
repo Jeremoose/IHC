@@ -2,15 +2,12 @@ package com.novodin.ihc.fragments
 
 import android.app.Activity
 import android.app.AlertDialog
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
-import android.os.BatteryManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.text.InputType
+import android.util.Base64
+import android.util.Log
 import android.view.View
 import android.view.WindowManager
 import android.widget.*
@@ -21,12 +18,14 @@ import com.novodin.ihc.config.Config
 import com.novodin.ihc.model.PackingSlipItem
 import com.novodin.ihc.model.Project
 import com.novodin.ihc.network.Backend
+import com.novodin.ihc.zebra.BarcodeScanner
 import com.novodin.ihc.zebra.Cradle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONException
+import java.util.regex.Pattern
 
 
 class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
@@ -34,8 +33,6 @@ class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
 
     // View elements
     private lateinit var ivStandby: ImageView
-    private lateinit var bSetIP: Button
-    private lateinit var tvIP: TextView
 
     // general novodin scanner app vars
     private lateinit var backend: Backend
@@ -45,58 +42,95 @@ class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
     private val handler = Handler(Looper.getMainLooper())
     private lateinit var runnable: Runnable
 
+    // Barcode scanner
+    private lateinit var barcodeScanner: BarcodeScanner
+
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 //        intentFilter.addAction(Intent.ACTION_BATTERY_CHANGED)
+
+        barcodeScanner = BarcodeScanner(requireContext())
+        barcodeScanner.setDataCallback(::dataCallback)
+        barcodeScanner.setStatusCallback(::statusCallback)
 
         cradle = Cradle(requireContext())
         backend =
             Backend(requireContext(), "http://${Config.BackendIpAddress}:${Config.BackendPort}")
     }
 
+    private fun dataCallback(barcode: String) {
+        Log.d("qr-config", barcode)
+
+        var decodedBarcodeBytes: ByteArray
+
+        try {
+            decodedBarcodeBytes = Base64.decode(barcode, Base64.DEFAULT)
+        } catch (_: java.lang.IllegalArgumentException) {
+            // ignore if qr code value isn' t base64 encoded
+            return
+        }
+
+        val decodedBarcode = String(decodedBarcodeBytes, Charsets.UTF_8)
+        Log.d("qr-config", decodedBarcode)
+
+        // config format
+        // timers in SECONDS (not milliseconds!)
+        // ip/host;port;timer_short;timer_medium;timer_long;sumtimer^2
+        val configValues = decodedBarcode.split(Pattern.compile(";"), 0)
+        if (configValues.size != 6) {
+            Log.d("qr-config", "not a config qr value")
+            return
+        }
+
+        var timerShort: UInt
+        var timerMedium: UInt
+        var timerLong: UInt
+        var timerCVV: ULong
+
+        try {
+            timerShort = configValues[2].toUInt()
+            timerMedium = configValues[3].toUInt()
+            timerLong = configValues[4].toUInt()
+            timerCVV = configValues[5].toULong()
+        } catch (_: java.lang.NumberFormatException) {
+            // ignore non number values
+            Log.d("qr-config", "one or more of the timer values is not a number")
+            return
+        }
+
+        val cvvPartOne = (timerShort.toULong() + timerMedium.toULong() + timerLong.toULong())
+        if ((cvvPartOne * cvvPartOne) != timerCVV) {
+            // config verification value is not correct
+            Log.d("qr-config", "incorrect cvv")
+            return
+        }
+
+        Config.BackendIpAddress = configValues[0]
+        Config.BackendPort = configValues[1]
+        Config.PassiveTimeoutShort = timerShort * 1000u
+        Config.PassiveTimeoutMedium = timerMedium * 1000u
+        Config.PassiveTimeoutLong = timerLong * 1000u
+
+        Log.d("qr-config", "new config:\n" +
+                "${Config.BackendIpAddress}\n" +
+                "${Config.BackendPort}\n" +
+                "${Config.PassiveTimeoutShort}\n" +
+                "${Config.PassiveTimeoutMedium}\n" +
+                "${Config.PassiveTimeoutLong}"
+        )
+        backend =
+            Backend(requireContext(), "http://${Config.BackendIpAddress}:${Config.BackendPort}")
+    }
+
+    private fun statusCallback(message: String) {
+        Log.d("barcode-status", message)
+    }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         ivStandby = view.findViewById(R.id.ivStandby) as ImageView
         ivStandby.setImageResource(R.drawable.ic_standby_screen)
-
-        tvIP = view.findViewById(R.id.tvIP)
-        tvIP.text = Config.BackendIpAddress
-
-        bSetIP = view.findViewById(R.id.bSetIP) as Button
-        bSetIP.setOnClickListener {
-            val builder = AlertDialog.Builder(requireContext())
-            builder.setTitle("Set IP")
-
-            // Set up the input
-
-            // Set up the input
-            val input = EditText(requireContext())
-            // Specify the type of input expected; this, for example, sets the input as a password, and will mask the text
-            input.inputType = InputType.TYPE_CLASS_TEXT
-            builder.setView(input)
-
-            // Set up the buttons
-
-            // Set up the buttons
-            builder.setPositiveButton("OK"
-            ) { _, _ ->
-                Config.BackendIpAddress = input.text.toString()
-                backend = Backend(requireContext(),
-                    "http://${Config.BackendIpAddress}:${Config.BackendPort}")
-                (requireContext() as Activity).runOnUiThread {
-                    tvIP.text = Config.BackendIpAddress
-                }
-            }
-            builder.setNegativeButton("Cancel"
-            ) { dialog, _ -> dialog.cancel() }
-
-            builder.show()
-
-//            val alert = builder.create()
-//            alert.window?.setFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-//                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
-//            alert.show()
-        }
 
         val delay = 1000 // 1000 milliseconds == 1 second
 
@@ -143,6 +177,7 @@ class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
                 projectJSON.getInt("end")))
         }
         parentFragmentManager.beginTransaction().apply {
+            barcodeScanner.onClosed()
             replace(R.id.flFragment,
                 ProjectSelection(accessToken, backend, projectsArrayList, badge))
             addToBackStack("standby")
@@ -186,6 +221,7 @@ class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
     ) {
         lifecycleScope.launchWhenResumed {
             parentFragmentManager.beginTransaction().apply {
+                barcodeScanner.onClosed()
                 replace(R.id.flFragment,
                     PackingSlip(accessToken, backend, packingSlipItemArrayList))
                 addToBackStack("standby")
@@ -197,6 +233,7 @@ class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
     private fun goToFillerFragment(badge: String, accessToken: String) {
         lifecycleScope.launchWhenResumed {
             parentFragmentManager.beginTransaction().apply {
+                barcodeScanner.onClosed()
                 replace(R.id.flFragment,
                     Filler(badge, accessToken, backend))
                 addToBackStack("standby")
@@ -204,18 +241,4 @@ class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
             }
         }
     }
-
-    //not needed here
-//    private val batteryChangeReceiver: BroadcastReceiver = object : BroadcastReceiver() {
-//        override fun onReceive(context: Context?, intent: Intent) {
-//            val status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)
-//            if (status == BatteryManager.BATTERY_STATUS_CHARGING) {
-//                Toast.makeText(requireContext(), "IN CRADLE", Toast.LENGTH_SHORT).show()
-//            }
-//            if (status == BatteryManager.BATTERY_STATUS_DISCHARGING) {
-//                Toast.makeText(requireContext(), "REMOVED FROM CRADLE", Toast.LENGTH_SHORT)
-//                    .show()
-//            }
-//        }
-//    }
 }
