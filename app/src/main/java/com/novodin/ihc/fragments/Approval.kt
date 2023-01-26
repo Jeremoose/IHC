@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.*
+import android.util.Log
 import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
@@ -14,6 +15,8 @@ import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager.POP_BACK_STACK_INCLUSIVE
 import androidx.fragment.app.setFragmentResult
+import com.android.volley.NoConnectionError
+import com.android.volley.TimeoutError
 import com.novodin.ihc.R
 import com.novodin.ihc.config.Config
 import com.novodin.ihc.network.Backend
@@ -68,6 +71,7 @@ class Approval(private var backend: Backend) : Fragment(R.layout.fragment_projec
         // reset timer when user clicks anywhere in screen
         requireView().setOnClickListener {
             passiveTimeout.cancel()
+            Log.d("Approval:passiveTimeout", "passivetimeout cancel - onViewCreated")
             passiveTimeout.start()
         }
 
@@ -92,8 +96,19 @@ class Approval(private var backend: Backend) : Fragment(R.layout.fragment_projec
             override fun run() {
                 CoroutineScope(Dispatchers.IO).launch {
                     val resp = backend.pollApprover {
-                        println("poll error")
-                        println(it)
+                        when (it) {
+                            is NoConnectionError -> {
+                                Log.d("api-error:pollAprover", "NoConnectionError")
+                                // Handle no connection error
+                            }
+                            is TimeoutError   -> {
+                                Log.d("api-error:pollAprover", "TimeoutError")
+                                // Handle timeout error
+                            }
+                            else -> {
+                                Log.d("api-error:pollAprover", "Unknown error")
+                            }
+                        }
                     }
                     println("approver poll result")
                     try {
@@ -120,6 +135,7 @@ class Approval(private var backend: Backend) : Fragment(R.layout.fragment_projec
                     Toast.makeText(requireContext(), "Unknown badge number", Toast.LENGTH_LONG)
                         .show()
                 }
+                Log.d("loginResponse", loginResponse.toString())
                 accessToken = loginResponse!!.getString("accessToken")
                 val userType = loginResponse!!.getInt("type")
 
@@ -127,6 +143,7 @@ class Approval(private var backend: Backend) : Fragment(R.layout.fragment_projec
                     bundleOf(Pair("success", userType == 1),
                         Pair("accessToken", if (userType == 1) accessToken else "")))
                 passiveTimeout.cancel()
+                Log.d("Approval:passiveTimeout", "passivetimeout cancel - ibNavFour.setOnClickListener")
                 handler.removeCallbacks(runnable)
                 requireContext().unregisterReceiver(batteryChangeReceiver)
                 requireActivity().supportFragmentManager.popBackStack()
@@ -146,6 +163,7 @@ class Approval(private var backend: Backend) : Fragment(R.layout.fragment_projec
                     bundleOf(Pair("success", userType == 1),
                         Pair("accessToken", if (userType == 1) accessToken else "")))
                 passiveTimeout.cancel()
+                Log.d("Approval:passiveTimeout", "passivetimeout cancel - etBadgeNumber.onSubmit")
                 requireContext().unregisterReceiver(batteryChangeReceiver)
                 requireActivity().supportFragmentManager.popBackStack()
 
@@ -218,6 +236,7 @@ class Approval(private var backend: Backend) : Fragment(R.layout.fragment_projec
             if (status == BatteryManager.BATTERY_STATUS_CHARGING) {
                 handler.removeCallbacks(runnable)
                 passiveTimeout.cancel()
+                Log.d("Approval:passiveTimeout", "passivetimeout cancel - batteryChangeReceiver")
                 requireContext().unregisterReceiver(this)
                 requireActivity().supportFragmentManager.popBackStack("standby", POP_BACK_STACK_INCLUSIVE)
             }

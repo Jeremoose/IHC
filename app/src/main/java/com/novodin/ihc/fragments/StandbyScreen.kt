@@ -8,9 +8,11 @@ import android.os.Looper
 import android.text.InputType
 import android.util.Base64
 import android.util.Log
+import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
 import android.widget.*
+import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.novodin.ihc.R
@@ -26,7 +28,10 @@ import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONException
 import java.util.regex.Pattern
+import android.content.SharedPreferences
+import android.content.Context
 
+private var dialog: AlertDialog? = null
 
 class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
 //    private var intentFilter = IntentFilter()
@@ -54,6 +59,36 @@ class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
         barcodeScanner.setDataCallback(::dataCallback)
         barcodeScanner.setStatusCallback(::statusCallback)
 
+        // Get confiuration from store
+        val prefsHelper = SharedPreferencesHelper(requireContext())
+        val decodedBarcode = prefsHelper.getValue()
+        Log.d("qr-config:stored config = ", decodedBarcode.toString())
+
+        // If configuration exists use it
+        if (decodedBarcode != null) {
+            val configValues = decodedBarcode?.split(Pattern.compile(";"), 0)
+            var timerShort: UInt
+            var timerMedium: UInt
+            var timerLong: UInt
+            var timerCVV: ULong
+
+            try {
+                timerShort = configValues!![2]!!.toUInt()
+                timerMedium = configValues!![3]!!.toUInt()
+                timerLong = configValues!![4]!!.toUInt()
+                timerCVV = configValues!![5]!!.toULong()
+                Config.BackendIpAddress = configValues[0]
+                Config.BackendPort = configValues[1]
+                Config.PassiveTimeoutShort = timerShort * 1000u
+                Config.PassiveTimeoutMedium = timerMedium * 1000u
+                Config.PassiveTimeoutLong = timerLong * 1000u
+            } catch (_: java.lang.NumberFormatException) {
+                // ignore non number values
+                Log.d("qr-config:stored config", "One more of the timer values is not a number")
+            }
+
+        }
+        Log.d("qr-config: config = ", Config.toString())
         cradle = Cradle(requireContext())
         backend =
             Backend(requireContext(), "http://${Config.BackendIpAddress}:${Config.BackendPort}")
@@ -68,6 +103,13 @@ class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
             decodedBarcodeBytes = Base64.decode(barcode, Base64.DEFAULT)
         } catch (_: java.lang.IllegalArgumentException) {
             // ignore if qr code value isn' t base64 encoded
+            (requireContext() as Activity).runOnUiThread {
+                val t = Toast.makeText(requireContext(),
+                    "Unknown QR-code ",
+                    Toast.LENGTH_LONG)
+                t.setGravity(Gravity.TOP,0,0);
+                t.show();
+            }
             return
         }
 
@@ -80,6 +122,13 @@ class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
         val configValues = decodedBarcode.split(Pattern.compile(";"), 0)
         if (configValues.size != 6) {
             Log.d("qr-config", "not a config qr value")
+            (requireContext() as Activity).runOnUiThread {
+                val t = Toast.makeText(requireContext(),
+                    "Incorrect QR-code ",
+                    Toast.LENGTH_LONG)
+                t.setGravity(Gravity.TOP,0,0);
+                t.show();
+            }
             return
         }
 
@@ -96,6 +145,13 @@ class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
         } catch (_: java.lang.NumberFormatException) {
             // ignore non number values
             Log.d("qr-config", "one or more of the timer values is not a number")
+            (requireContext() as Activity).runOnUiThread {
+                val t = Toast.makeText(requireContext(),
+                    "Incorrect QR-code ",
+                    Toast.LENGTH_LONG)
+                t.setGravity(Gravity.TOP,0,0);
+                t.show();
+            }
             return
         }
 
@@ -103,6 +159,13 @@ class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
         if ((cvvPartOne * cvvPartOne) != timerCVV) {
             // config verification value is not correct
             Log.d("qr-config", "incorrect cvv")
+            (requireContext() as Activity).runOnUiThread {
+                val t = Toast.makeText(requireContext(),
+                    "Incorrect QR-code ",
+                    Toast.LENGTH_LONG)
+                t.setGravity(Gravity.TOP,0,0);
+                t.show();
+            }
             return
         }
 
@@ -121,6 +184,22 @@ class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
         )
         backend =
             Backend(requireContext(), "http://${Config.BackendIpAddress}:${Config.BackendPort}")
+
+        (requireContext() as Activity).runOnUiThread {
+            val t = Toast.makeText(requireContext(),
+                "QR-code Successfully scanned:\n\n" +
+                        "Host: ${Config.BackendIpAddress}\n" +
+                        "Port: ${Config.BackendPort}\n" +
+                        "T1: ${timerShort}\n" +
+                        "T2: ${timerMedium}\n" +
+                        "T3: ${timerLong}",
+                Toast.LENGTH_LONG)
+            t.setGravity(Gravity.TOP,0,0);
+            t.show();
+        }
+        val prefsHelper = SharedPreferencesHelper(requireContext())
+        prefsHelper.insertValue(decodedBarcode)
+
     }
 
     private fun statusCallback(message: String) {
@@ -239,6 +318,23 @@ class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
                 addToBackStack("standby")
                 commit()
             }
+        }
+    }
+
+    class SharedPreferencesHelper(context: Context) {
+        companion object {
+            private const val PREFS_NAME = "qrconfig"
+            private const val VALUE_KEY = "value"
+        }
+
+        private val prefs: SharedPreferences = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+
+        fun insertValue(value: String) {
+            prefs.edit().putString(VALUE_KEY, value).apply()
+        }
+
+        fun getValue(): String? {
+            return prefs.getString(VALUE_KEY, null)
         }
     }
 }

@@ -59,6 +59,7 @@ class ShoppingCart(
     private lateinit var ibNavFour: ImageButton
     private lateinit var tvNavOne: TextView
     private lateinit var tvNavFour: TextView
+    private var dialog: AlertDialog? = null
 
     // Barcode scanner
     private lateinit var barcodeScanner: BarcodeScanner
@@ -66,7 +67,10 @@ class ShoppingCart(
     // Timer variables
     private lateinit var passiveTimeout: CountDownTimer
 
+    private var isApproved: Boolean = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        Log.d("ShoppingCart:debug_double-passivetimeout", "fun onCreate")
         super.onCreate(savedInstanceState)
         intentFilter.addAction("com.symbol.intent.device.DOCKED")
         requireContext().registerReceiver(dockChangeReceiver, intentFilter)
@@ -76,21 +80,26 @@ class ShoppingCart(
             object : CountDownTimer(Config.PassiveTimeoutLong.toLong(), Config.PassiveTimeoutLong.toLong()) {
                 override fun onTick(p0: Long) {}
                 override fun onFinish() {
-
-                    if (approvalState) {
-                        barcodeScanner.onClosed()
-                        CoroutineScope(Dispatchers.IO).launch {
-                            backend.approve(cartId, accessToken, JSONArray(articleList))
+                    Log.d("ShoppingCart:debug_double-passivetimeout", "timer onFinish")
+                    Log.d("ShoppingCart:debug_double-passivetimeout: isApproved = ", isApproved.toString())
+                    if (!isApproved) {
+                        if (approvalState) {
+                            barcodeScanner.onClosed()
+                            CoroutineScope(Dispatchers.IO).launch {
+                                backend.approve(cartId, accessToken, JSONArray(articleList))
+                            }
+                            Toast.makeText(requireContext(),
+                                "Successfully approved",
+                                Toast.LENGTH_LONG)
+                                .show()
                         }
-                        Toast.makeText(requireContext(), "Successfully approved", Toast.LENGTH_LONG)
-                            .show()
-                    }
 
-                    // release the user
-                    CoroutineScope(Dispatchers.IO).launch {
-                        backend.loginRelease(badge!!, accessToken)
+                        // release the user
+                        CoroutineScope(Dispatchers.IO).launch {
+                            backend.loginRelease(badge!!, accessToken)
+                        }
                     }
-                    Log.d("ShoppingCart:debug_unregister_fatal", "passivetimeout unregister")
+//                    Log.d("ShoppingCart:debug_unregister_fatal", "passivetimeout unregister")
                     try {
                         requireContext().unregisterReceiver(dockChangeReceiver)
                     } catch (e: IllegalArgumentException) {
@@ -129,7 +138,7 @@ class ShoppingCart(
         super.onViewCreated(view, savedInstanceState)
 
         // Start timeout
-        Log.d("ShoppingCart:debug_double-passivetimeout", "passivetimeout start - onViewCreated")
+//        Log.d("ShoppingCart:debug_double-passivetimeout", "passivetimeout start - onViewCreated")
         // reset timer when user clicks anywhere in screen
 //        view.setOnClickListener {
 //            resetPassiveTimeout()
@@ -177,6 +186,7 @@ class ShoppingCart(
         barcodeScanner.setStatusCallback(::statusCallback)
 
         // Start timeout
+
         Log.d("ShoppingCart:debug_double-passivetimeout", "passivetimeout start - onResume")
         passiveTimeout.start()
         // reset timer when user clicks anywhere in screen
@@ -185,6 +195,7 @@ class ShoppingCart(
         requireContext().registerReceiver(dockChangeReceiver, intentFilter)
 
         requireView().viewTreeObserver.addOnGlobalLayoutListener {
+            Log.d("ShoppingCart:debug_double-passivetimeout", "passivetimeout reset - addOnGlobalLayoutListener")
             resetPassiveTimeout()
         }
 
@@ -195,6 +206,7 @@ class ShoppingCart(
         super.onPause()
         barcodeScanner.onClosed()
         passiveTimeout.cancel()
+        Log.d("ShoppingCart:debug_double-passivetimeout", "passivetimeout cancel - onPause")
     }
 
     private fun initNavButtons(view: View) {
@@ -274,6 +286,7 @@ class ShoppingCart(
 
     private fun dataCallback(barcode: String) {
         Log.d("scan", barcode)
+        Log.d("ShoppingCart:debug_double-passivetimeout", "passivetimeout reset - dataCallback")
         resetPassiveTimeout()
         if (cartId == 0) {
             Toast.makeText(requireContext(),
@@ -300,18 +313,29 @@ class ShoppingCart(
             for ((i, art) in articleList.withIndex()) {
                 if (art.id == article.id) {
                     alreadyExisted = true
-                    articleList[i].count++
+                    articleList.removeAt(i)
+                    //articleList[i].count++
+                    article.count++
+                    articleList.add(0,article)
                     (requireContext() as Activity).runOnUiThread {
-                        adapter.notifyItemChanged(i)
+//                        adapter.notifyItemChanged(i)
+                        adapter.notifyItemRemoved(i)
+                        adapter.notifyItemInserted(0)
+                        rvArticleList.scrollToPosition(0)
                     }
                     break
                 }
             }
 
             if (!alreadyExisted) {
-                articleList.add(article)
+                Log.d("article-add-debug: article", article.toString())
+                Log.d("article-add-debug: articleList before :", articleList.toString())
+                articleList.add(0,article)
+                Log.d("article-add-debug: articleList after :", articleList.toString())
                 (requireContext() as Activity).runOnUiThread {
-                    adapter.notifyItemInserted(articleList.size - 1)
+//                    adapter.notifyItemInserted(articleList.size - 1)
+                    adapter.notifyItemInserted(0)
+                    rvArticleList.scrollToPosition(0)
                 }
             }
 
@@ -390,8 +414,10 @@ class ShoppingCart(
                 .setCancelable(false)
                 .setPositiveButton("Yes") { _, _ ->
                     barcodeScanner.onClosed()
+                    isApproved = true
                     CoroutineScope(Dispatchers.IO).launch {
                         passiveTimeout.cancel()
+                        Log.d("ShoppingCart:debug_double-passivetimeout", "passivetimeout cancel - stop - approvalState true")
                         requireContext().unregisterReceiver(dockChangeReceiver)
                         backend.approve(cartId, accessToken, JSONArray(articleList))
                         backend.loginRelease(badge, accessToken)
@@ -405,10 +431,10 @@ class ShoppingCart(
                     // TODO handler for unapproved
                     dialog.dismiss()
                 }
-            val alert = builder.create()
-            alert.window?.setFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            dialog = builder.create()
+            dialog!!.window?.setFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
-            alert.show()
+            dialog!!.show()
         } else {
             val builder = AlertDialog.Builder(requireContext())
             builder.setMessage("What would you like to do?")
@@ -416,6 +442,7 @@ class ShoppingCart(
                 .setPositiveButton("Verify") { _, _ ->
                     parentFragmentManager.beginTransaction().apply {
                         passiveTimeout.cancel()
+                        Log.d("ShoppingCart:debug_double-passivetimeout", "passivetimeout cancel - stop approvalState false")
                         requireContext().unregisterReceiver(dockChangeReceiver)
                         CoroutineScope(Dispatchers.IO).launch {
                             backend.loginRelease(badge, accessToken)
@@ -428,10 +455,10 @@ class ShoppingCart(
                 .setNegativeButton("Continue") { dialog, _ ->
                     dialog.dismiss()
                 }
-            val alert = builder.create()
-            alert.window?.setFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            dialog = builder.create()
+            dialog!!.window?.setFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
-            alert.show()
+            dialog!!.show()
         }
     }
 
@@ -449,6 +476,8 @@ class ShoppingCart(
                     }
                 }
                 passiveTimeout.cancel()
+                dialog?.cancel()
+                Log.d("ShoppingCart:debug_double-passivetimeout", "passivetimeout cancel - dockChangeReceiver")
                 try {
                     requireContext().unregisterReceiver(this)
 
@@ -462,9 +491,11 @@ class ShoppingCart(
     }
 
     private fun resetPassiveTimeout() {
+        Log.d("ShoppingCart:debug_double-passivetimeout: isApproved = ", isApproved.toString())
         passiveTimeout.cancel()
-        Log.d("ProjectSelection:debug_double-passivetimeout",
-            "reset passive timeout")
+//        Log.d("ShoppingCart:debug_double-passivetimeout:: passiveTimout @ resetPassiveTimeout = ", passiveTimeout.toString())
+//        Log.d("ProjectSelection:debug_double-passiveTimeout",
+//            "reset passive timeout")
         passiveTimeout.start()
     }
 }

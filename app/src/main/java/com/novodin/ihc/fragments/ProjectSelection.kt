@@ -47,6 +47,7 @@ class ProjectSelection(
     private lateinit var tvLabelProjects: TextView
     private lateinit var ibNavFour: ImageButton
     private lateinit var tvNavFour: TextView
+    private var dialog: AlertDialog? = null
 
     // Timer variables
     private lateinit var passiveTimeout: CountDownTimer
@@ -173,6 +174,7 @@ class ProjectSelection(
                     parentFragmentManager.beginTransaction().apply {
                         removeFromCradleTimeout.cancel()
                         passiveTimeout.cancel()
+                        Log.d("ProjectSelection:passiveTimeout", "passivetimeout cancel - onSubmit")
                         requireContext().unregisterReceiver(dockChangeReceiver)
                         replace(R.id.flFragment,
                             Filler(badge!!, accessToken, backend))
@@ -223,6 +225,7 @@ class ProjectSelection(
                         parentFragmentManager.beginTransaction().apply {
                             removeFromCradleTimeout.cancel()
                             passiveTimeout.cancel()
+                            Log.d("ProjectSelection:passiveTimeout", "passivetimeout cancel - ibNavFour.setOnClickListener")
                             requireContext().unregisterReceiver(dockChangeReceiver)
                             replace(R.id.flFragment,
                                 ShoppingCart(badge!!,
@@ -235,10 +238,11 @@ class ProjectSelection(
                     .setNegativeButton("No") { dialog, _ ->
                         dialog.dismiss()
                     }
-                val dialog = builder.create()
-                dialog.window?.setFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+                dialog = builder.create()
+                dialog!!.window?.setFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
                     WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
-                dialog.show()
+                dialog!!.show()
+
             }
         }
     }
@@ -378,6 +382,9 @@ class ProjectSelection(
                 }
                 removeFromCradleTimeout.cancel()
                 passiveTimeout.cancel()
+                dialog?.cancel()
+                Log.d("ProjectSelection:passiveTimeout", "passivetimeout cancel - dockChangeReceiver")
+
                 try {
                     requireContext().unregisterReceiver(this)
 
@@ -399,7 +406,7 @@ class ProjectSelection(
 
     private fun resetPassiveTimeout() {
         passiveTimeout.cancel()
-        Log.d("ProjectSelection:debug_double-passivetimeout",
+        Log.d("ProjectSelection:debug_double-passiveTimeout",
             "reset passive timeout")
         passiveTimeout.start()
     }
