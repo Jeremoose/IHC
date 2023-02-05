@@ -267,50 +267,16 @@ class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
     private fun goToFiller(badge: String, accessToken: String, packingSlipItems: JSONArray) {
         cradle.unlock()
         handler.removeCallbacks(runnable)
+        Log.d("filler:unlocked", packingSlipItems.toString())
         if (packingSlipItems.length() > 0) {
-            val builder = AlertDialog.Builder(requireContext())
-            builder.setMessage("Use packing slips?")
-                .setCancelable(false)
-                .setPositiveButton("Yes") { _, _ ->
-                    val packingSlipItemArrayList = ArrayList<PackingSlipItem>()
-                    for (i in 0 until packingSlipItems.length()) {
-                        val projectJSON = packingSlipItems.getJSONObject(i)
-                        packingSlipItemArrayList.add(PackingSlipItem(projectJSON.getString("company_name"),
-                            projectJSON.getString("number")))
-                    }
-                    goToPackingSlipFragment(accessToken, packingSlipItemArrayList)
-                }
-                .setNegativeButton("No") { _, _ ->
-                    goToFillerFragment(badge, accessToken)
-                }
-            (requireContext() as Activity).runOnUiThread {
-                val alert = builder.create()
-                alert.window?.setFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
-                alert.show()
-            }
-        } else {
-            goToFillerFragment(badge, accessToken)
-        }
-    }
-
-    private fun goToPackingSlipFragment(
-        accessToken: String,
-        packingSlipItemArrayList: ArrayList<PackingSlipItem>,
-    ) {
-        lifecycleScope.launchWhenResumed {
             parentFragmentManager.beginTransaction().apply {
                 barcodeScanner.onClosed()
                 replace(R.id.flFragment,
-                    PackingSlip(accessToken, backend, packingSlipItemArrayList))
+                    PackingSlip(accessToken, backend, badge, packingSlipItems))
                 addToBackStack("standby")
                 commit()
             }
-        }
-    }
-
-    private fun goToFillerFragment(badge: String, accessToken: String) {
-        lifecycleScope.launchWhenResumed {
+        } else {
             parentFragmentManager.beginTransaction().apply {
                 barcodeScanner.onClosed()
                 replace(R.id.flFragment,
@@ -320,6 +286,18 @@ class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
             }
         }
     }
+
+//    private fun goToFillerFragment(badge: String, accessToken: String) {
+//        lifecycleScope.launchWhenResumed {
+//            parentFragmentManager.beginTransaction().apply {
+//                barcodeScanner.onClosed()
+//                replace(R.id.flFragment,
+//                    Filler(badge, accessToken, backend))
+//                addToBackStack("standby")
+//                commit()
+//            }
+//        }
+//    }
 
     class SharedPreferencesHelper(context: Context) {
         companion object {

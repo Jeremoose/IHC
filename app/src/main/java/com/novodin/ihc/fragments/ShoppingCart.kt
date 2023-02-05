@@ -101,6 +101,7 @@ class ShoppingCart(
                     }
 //                    Log.d("ShoppingCart:debug_unregister_fatal", "passivetimeout unregister")
                     try {
+                        dialog?.cancel()
                         requireContext().unregisterReceiver(dockChangeReceiver)
                     } catch (e: IllegalArgumentException) {
                         Log.d("ShoppingCart:debug_unregister_catch",
@@ -313,9 +314,10 @@ class ShoppingCart(
             for ((i, art) in articleList.withIndex()) {
                 if (art.id == article.id) {
                     alreadyExisted = true
+                    article.count = articleList[i].count +1
                     articleList.removeAt(i)
                     //articleList[i].count++
-                    article.count++
+//                    article.count++
                     articleList.add(0,article)
                     (requireContext() as Activity).runOnUiThread {
 //                        adapter.notifyItemChanged(i)

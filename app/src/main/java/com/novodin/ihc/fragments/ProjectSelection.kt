@@ -74,6 +74,7 @@ class ProjectSelection(
                         }
                     }
                     passiveTimeout.cancel()
+                    dialog?.cancel()
                     Log.d("ProjectSelection:debug_unregister_fatal",
                         "removefromcradletimeout unregister")
                     try {
@@ -98,6 +99,7 @@ class ProjectSelection(
                         }
                     }
                     removeFromCradleTimeout.cancel()
+                    dialog?.cancel()
                     Log.d("ProjectSelection:debug_unregister_fatal", "passivetimeout unregister")
                     try {
                         requireContext().unregisterReceiver(dockChangeReceiver)

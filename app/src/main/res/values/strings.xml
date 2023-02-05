@@ -5,6 +5,8 @@
     <string name="label_article_count_item" translatable="false">ITEM</string>
     <string name="label_article_count_pu" translatable="false">PU</string>
     <string name="label_article_count_unit" translatable="false">UNIT</string>
+    <string name="label_packingslip_company" translatable="false">Company</string>
+    <string name="label_packingslip_number" translatable="false">Number</string>
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="title_activity_fullscreen_activitytest">FullscreenActivitytest</string>
