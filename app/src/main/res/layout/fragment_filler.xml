@@ -7,141 +7,240 @@
     android:layout_height="match_parent"
     tools:context=".fragments.Filler">
 
-    <LinearLayout
-        android:id="@+id/llLabelCurrentArticle"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
 
-        <TextView
-            android:id="@+id/tvLabelItemCount"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_margin="@dimen/text_margin"
-            android:layout_weight="0.1"
-            android:text="#"
-            android:textAlignment="viewStart"
-            android:textAppearance="?attr/textAppearanceListItem"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/tvLabelArticleName"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginLeft="16dp"
-            android:layout_marginTop="16dp"
-            android:layout_weight=".7"
-            android:text="Article"
-            android:textAlignment="viewStart"
-            android:textAppearance="?attr/textAppearanceListItem"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/tvLabelQuantityType"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_margin="@dimen/text_margin"
-            android:layout_weight=".2"
-            android:text="Type"
-            android:textAlignment="viewStart"
-            android:textAppearance="?attr/textAppearanceListItem"
-            android:textStyle="bold" />
-    </LinearLayout>
 
     <LinearLayout
-        android:id="@+id/llCurrentArticle"
+        android:id="@+id/llArticleCount"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="0dp"
+        android:baselineAligned="false"
+        android:gravity="fill_horizontal"
         android:orientation="horizontal"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/llLabelCurrentArticle">
-
-        <TextView
-            android:id="@+id/tvItemCount"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginLeft="16dp"
-            android:layout_marginRight="16dp"
-            android:layout_weight="0.1"
-            android:textAppearance="?attr/textAppearanceListItem"
-            android:textStyle="bold" />
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_weight="0.2">
 
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="0.7"
+            android:layout_weight="1"
             android:orientation="vertical">
 
             <TextView
-                android:id="@+id/tvArticleName"
-                android:layout_width="wrap_content"
+                android:id="@+id/tvLabelItemCount"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginLeft="8dp"
-                android:textAppearance="?attr/textAppearanceListItem" />
+                android:layout_margin="8dp"
+                android:text="@string/label_article_count_item"
+                android:textAlignment="center"
+                android:textColor="@color/black"
+                android:textStyle="bold" />
 
             <TextView
-                android:id="@+id/tvArticleNumber"
-                android:layout_width="wrap_content"
+                android:id="@+id/tvItemCount"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginLeft="8dp"
-                android:layout_marginBottom="8dp" />
+                android:layout_margin="8dp"
+                android:textAlignment="center"
+                android:textSize="24sp" />
         </LinearLayout>
 
-        <TextView
-            android:id="@+id/tvQuantityType"
+        <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginLeft="16dp"
-            android:layout_marginRight="16dp"
-            android:layout_weight="0.2"
-            android:textAlignment="textEnd"
-            android:textAppearance="?attr/textAppearanceListItem"
-            android:textStyle="italic" />
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tvLabelPUCount"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="8dp"
+                android:text="@string/label_article_count_pu"
+                android:textAlignment="center"
+                android:textColor="@color/black"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvPUCount"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="8dp"
+                android:textAlignment="center"
+                android:textSize="24sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tvLabelUnitCount"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="8dp"
+                android:text="@string/label_article_count_unit"
+                android:textAlignment="center"
+                android:textColor="@color/black"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvUnitCount"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="8dp"
+                android:textAlignment="center"
+                android:textSize="24sp" />
+
+        </LinearLayout>
+
     </LinearLayout>
 
-    <TextView
-        android:id="@+id/tvLabelAdding"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="32dp"
-        android:layout_marginBottom="32dp"
-        android:text="Adding"
-        android:textAppearance="@style/TextAppearance.AppCompat.Large"
-        app:layout_constraintBottom_toTopOf="@+id/tvLabelNewTotal"
-        app:layout_constraintStart_toStartOf="parent" />
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rvArticleList"
+        android:name="com.novodin.ihc.ArticleFragment"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        app:layoutManager="LinearLayoutManager"
+        app:layout_constraintBottom_toTopOf="@id/llFillAction"
+        app:layout_constraintTop_toBottomOf="@id/llArticleCount"
+        tools:listitem="@layout/fragment_article">
 
-    <TextView
-        android:id="@+id/tvAdding"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginEnd="32dp"
-        android:textSize="34sp"
-        app:layout_constraintBottom_toBottomOf="@+id/tvLabelAdding"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="@+id/tvLabelAdding" />
+    </androidx.recyclerview.widget.RecyclerView>
 
-    <TextView
-        android:id="@+id/tvLabelNewTotal"
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:id="@+id/llFillAction"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="32dp"
-        android:layout_marginBottom="64dp"
-        android:text="New total"
-        android:textAppearance="@style/TextAppearance.AppCompat.Large"
+        android:orientation="vertical"
         app:layout_constraintBottom_toTopOf="@id/llButtons"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintTop_toBottomOf="@id/rvArticleList">
 
-    <TextView
-        android:id="@+id/tvNewTotal"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginEnd="32dp"
-        android:textSize="34sp"
-        app:layout_constraintBottom_toBottomOf="@+id/tvLabelNewTotal"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="@+id/tvLabelNewTotal" />
+        <LinearLayout
+            android:id="@+id/llAdding"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tvLabelAdding"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="32dp"
+                    android:layout_marginBottom="32dp"
+                    android:text="Adding"
+                    android:textAppearance="@style/TextAppearance.AppCompat.Large" />
+
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tvAdding"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="32dp"
+                    android:textSize="34sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/llNew"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="horizontal">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tvLabelNewTotal"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="32dp"
+                    android:layout_marginBottom="64dp"
+                    android:text="New total"
+                    android:textAppearance="@style/TextAppearance.AppCompat.Large" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tvNewTotal"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="32dp"
+                    android:textSize="34sp" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+
+<!--    <LinearLayout-->
+<!--        android:id="@+id/llCurrentArticle"-->
+<!--        android:layout_width="match_parent"-->
+<!--        android:layout_height="wrap_content"-->
+<!--        android:orientation="horizontal"-->
+<!--        app:layout_constraintStart_toStartOf="parent"-->
+<!--        app:layout_constraintTop_toBottomOf="@id/llLabelCurrentArticle">-->
+
+<!--        <TextView-->
+<!--            android:id="@+id/tvItemCount"-->
+<!--            android:layout_width="0dp"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:layout_marginLeft="16dp"-->
+<!--            android:layout_marginRight="16dp"-->
+<!--            android:layout_weight="0.1"-->
+<!--            android:textAppearance="?attr/textAppearanceListItem"-->
+<!--            android:textStyle="bold" />-->
+
+<!--        <LinearLayout-->
+<!--            android:layout_width="0dp"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:layout_weight="0.7"-->
+<!--            android:orientation="vertical">-->
+
+<!--            <TextView-->
+<!--                android:id="@+id/tvArticleName"-->
+<!--                android:layout_width="wrap_content"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:layout_marginLeft="8dp"-->
+<!--                android:textAppearance="?attr/textAppearanceListItem" />-->
+
+<!--            <TextView-->
+<!--                android:id="@+id/tvArticleNumber"-->
+<!--                android:layout_width="wrap_content"-->
+<!--                android:layout_height="wrap_content"-->
+<!--                android:layout_marginLeft="8dp"-->
+<!--                android:layout_marginBottom="8dp" />-->
+<!--        </LinearLayout>-->
+
+<!--        <TextView-->
+<!--            android:id="@+id/tvQuantityType"-->
+<!--            android:layout_width="0dp"-->
+<!--            android:layout_height="wrap_content"-->
+<!--            android:layout_marginLeft="16dp"-->
+<!--            android:layout_marginRight="16dp"-->
+<!--            android:layout_weight="0.2"-->
+<!--            android:textAlignment="textEnd"-->
+<!--            android:textAppearance="?attr/textAppearanceListItem"-->
+<!--            android:textStyle="italic" />-->
+<!--    </LinearLayout>-->
 
     <LinearLayout
         android:id="@+id/llButtons"
