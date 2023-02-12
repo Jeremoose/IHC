@@ -15,7 +15,9 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.fragment.app.Fragment
+import androidx.recyclerview.widget.RecyclerView
 import com.novodin.ihc.R
+import com.novodin.ihc.adapters.ArticleRecyclerViewAdapter
 import com.novodin.ihc.config.Config
 import com.novodin.ihc.model.Article
 import com.novodin.ihc.model.QuantityType
@@ -39,15 +41,22 @@ class Filler(
 
     // Filler variables
     private lateinit var scanTimeout: Runnable
-    private var scanTimeoutHandler: Handler = Handler(Looper.getMainLooper())
+    private val articleList: MutableList<Article> = ArrayList()
     private var selectedArticle: Article? = null
     private var adding: Int = 0
+    private var itemCount: Int = 0
+    private var puCount: Int = 0
+    private var unitCount: Int = 0
 
     // View elements
+    private lateinit var rvArticleList: RecyclerView
+    private lateinit var tvItemCount: TextView
+    private lateinit var tvPUCount: TextView
+    private lateinit var tvUnitCount: TextView
+
     private lateinit var tvAdding: TextView
     private lateinit var tvLabelAdding: TextView
     private lateinit var tvNewTotal: TextView
-    private lateinit var tvItemCount: TextView
     private lateinit var tvArticleName: TextView
     private lateinit var tvArticleNumber: TextView
     private lateinit var tvQuantityType: TextView
@@ -121,13 +130,22 @@ class Filler(
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        rvArticleList = view.findViewById(R.id.rvArticleList) as RecyclerView
+        tvItemCount = view.findViewById(R.id.tvItemCount) as TextView
+        tvPUCount = view.findViewById(R.id.tvPUCount) as TextView
+        tvUnitCount = view.findViewById(R.id.tvUnitCount) as TextView
+
+        tvItemCount.text = itemCount.toString()
+        tvPUCount.text = puCount.toString()
+        tvUnitCount.text = unitCount.toString()
+
+        rvArticleList.adapter = ArticleRecyclerViewAdapter(articleList)
+
         tvAdding = view.findViewById(R.id.tvAdding) as TextView
         tvLabelAdding = view.findViewById(R.id.tvLabelAdding) as TextView
         tvNewTotal = view.findViewById(R.id.tvNewTotal) as TextView
         tvItemCount = view.findViewById(R.id.tvItemCount) as TextView
-        tvArticleName = view.findViewById(R.id.tvArticleName) as TextView
-        tvArticleNumber = view.findViewById(R.id.tvArticleNumber) as TextView
-        tvQuantityType = view.findViewById(R.id.tvQuantityType) as TextView
+
         ibAdd = view.findViewById(R.id.ibNavFour) as ImageButton
         ibRemove = view.findViewById(R.id.ibNavOne) as ImageButton
         ibStop = view.findViewById(R.id.ibNavThree) as ImageButton
@@ -142,7 +160,6 @@ class Filler(
             builder.setMessage("Are you sure you want to stop?")
                 .setCancelable(false)
                 .setPositiveButton("Yes") { _, _ ->
-                    scanTimeoutHandler.removeCallbacks(scanTimeout)
                     CoroutineScope(Dispatchers.IO).launch {
                         backend.loginRelease(badge, accessToken)
                     }
@@ -160,33 +177,6 @@ class Filler(
         val barcodeScanner = BarcodeScanner(requireContext())
         barcodeScanner.setDataCallback(::onBarcodeScanData)
         barcodeScanner.setStatusCallback(::onBarcodeScanStatus)
-
-        scanTimeout = Runnable { onScanTimeout() }
-
-    }
-
-    private fun onScanTimeout() {
-        CoroutineScope(Dispatchers.IO).launch {
-            backend.setFillerItem(selectedArticle!!.barcode,
-                adding.toString(),
-                accessToken) {
-                println(it)
-                Toast.makeText(requireContext(), "Something went wrong", Toast.LENGTH_LONG)
-                    .show()
-            }
-            selectedArticle = null
-            adding = 0
-            (requireContext() as Activity).runOnUiThread {
-                tvLabelAdding.text = "Adding"
-                tvAdding.text = "0"
-                tvNewTotal.text = "0"
-
-                tvArticleName.text = ""
-                tvArticleNumber.text = ""
-                tvQuantityType.text = ""
-                tvItemCount.text = ""
-            }
-        }
     }
 
     private fun onModifyAmount(add: Boolean) {
@@ -202,8 +192,9 @@ class Filler(
     }
 
     private fun onBarcodeScanData(barcode: String) {
+        resetPassiveTimeout()
+
         CoroutineScope(Dispatchers.IO).launch {
-            scanTimeoutHandler.removeCallbacks(scanTimeout)
 
             val item = backend.getFillerItem(barcode, accessToken) {
                 Toast.makeText(requireContext(), "Unknown barcode", Toast.LENGTH_LONG).show()
@@ -215,6 +206,9 @@ class Filler(
                 QuantityType.fromInt(item.getInt("cat")),
                 item.getInt("currentamount"))
 
+
+            // If a new article is scanned, the previous one should be stored in the database
+            // If the last article is scanned again it should be increased with 1 item
             if (selectedArticle != null) {
                 if (selectedArticle!!.id != article.id) {
                     backend.setFillerItem(selectedArticle!!.barcode,
@@ -224,6 +218,7 @@ class Filler(
                         Toast.makeText(requireContext(), "Something went wrong", Toast.LENGTH_LONG)
                             .show()
                     }
+                    adding = 0
                     selectedArticle = article
                 } else {
                     selectedArticle = article
@@ -232,25 +227,54 @@ class Filler(
                         Toast.makeText(requireContext(), "Something went wrong", Toast.LENGTH_LONG)
                             .show()
                     }
+                    // Add addtional count to the selected article, added count for this article and
+                    // the item, PU and Unit counts at the top of the screen
                     selectedArticle!!.count++
+                    adding++
+                    when (article.quantityType) {
+                        QuantityType.ITEM -> tvItemCount.text = (++itemCount).toString()
+                        QuantityType.PU -> tvPUCount.text = (++puCount).toString()
+                        QuantityType.UNIT -> tvUnitCount.text = (++unitCount).toString()
+                    }
                 }
             } else {
+                adding = 0
                 selectedArticle = article
             }
 
-            adding = 0
-            (requireContext() as Activity).runOnUiThread {
-                tvLabelAdding.text = "Adding"
-                tvAdding.text = "0"
-                tvNewTotal.text = selectedArticle!!.count.toString()
+            val adapter = rvArticleList.adapter as ArticleRecyclerViewAdapter
 
-                tvArticleName.text = selectedArticle!!.name
-                tvArticleNumber.text = selectedArticle!!.number
-                tvQuantityType.text = selectedArticle!!.quantityType.toString()
-                tvItemCount.text = selectedArticle!!.count.toString()
+            // put scanned article at the top position in the list, scroll to top of list if needed
+            var alreadyExisted = false
+            for ((i, art) in articleList.withIndex()) {
+                if (art.id == selectedArticle!!.id) {
+                    alreadyExisted = true
+                    articleList.removeAt(i)
+                    articleList.add(0,selectedArticle!!)
+                    (requireContext() as Activity).runOnUiThread {
+                        adapter.notifyItemRemoved(i)
+                        adapter.notifyItemInserted(0)
+                        rvArticleList.scrollToPosition(0)
+                    }
+                    break
+                }
+            }
+            if (!alreadyExisted) {
+                Log.d("fiiler:article-add-debug: article", article.toString())
+                Log.d("filler:article-add-debug: articleList before :", articleList.toString())
+                articleList.add(0,article)
+                Log.d("article-add-debug: articleList after :", articleList.toString())
+                (requireContext() as Activity).runOnUiThread {
+                    adapter.notifyItemInserted(0)
+                    rvArticleList.scrollToPosition(0)
+                }
             }
 
-            scanTimeoutHandler.postDelayed(scanTimeout, 5000)
+            (requireContext() as Activity).runOnUiThread {
+                tvLabelAdding.text = "Adding"
+                tvAdding.text = adding.toString()
+                tvNewTotal.text = selectedArticle!!.count.toString()
+            }
         }
     }
 
@@ -297,5 +321,10 @@ class Filler(
         }
     }
 
+    private fun resetPassiveTimeout() {
+        Log.d("Filler:debug_double-passivetimeout: ", "resetPassiveTimeout ")
+        passiveTimeout.cancel()
+        passiveTimeout.start()
+    }
 
 }
