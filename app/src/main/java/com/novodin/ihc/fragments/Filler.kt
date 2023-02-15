@@ -180,13 +180,25 @@ class Filler(
     }
 
     private fun onModifyAmount(add: Boolean) {
+        resetPassiveTimeout()
         if (selectedArticle != null) {
-            if (add) adding++ else adding--
+            if (add) {
+                adding++
+                selectedArticle!!.count++
+                changeQuantity(selectedArticle!!.quantityType, 1)
+            } else {
+                adding--
+                selectedArticle!!.count--
+                changeQuantity(selectedArticle!!.quantityType, -1)
+            }
+            val adapter = rvArticleList.adapter as ArticleRecyclerViewAdapter
+
             val addingLabel = if (adding < 0) "Removing" else "Adding"
             (requireContext() as Activity).runOnUiThread {
                 tvLabelAdding.text = addingLabel
                 tvAdding.text = abs(adding).toString()
-                tvNewTotal.text = (selectedArticle!!.count + adding).toString()
+                tvNewTotal.text = (selectedArticle!!.count).toString()
+                adapter.notifyItemChanged(0,selectedArticle)
             }
         }
     }
@@ -206,7 +218,7 @@ class Filler(
                 QuantityType.fromInt(item.getInt("cat")),
                 item.getInt("currentamount"))
 
-
+            var isPreviousScannedArticle = false
             // If a new article is scanned, the previous one should be stored in the database
             // If the last article is scanned again it should be increased with 1 item
             if (selectedArticle != null) {
@@ -221,6 +233,7 @@ class Filler(
                     adding = 0
                     selectedArticle = article
                 } else {
+                    isPreviousScannedArticle = true
                     selectedArticle = article
                     backend.setFillerItem(selectedArticle!!.barcode, "1", accessToken) {
                         println(it)
@@ -231,11 +244,7 @@ class Filler(
                     // the item, PU and Unit counts at the top of the screen
                     selectedArticle!!.count++
                     adding++
-                    when (article.quantityType) {
-                        QuantityType.ITEM -> tvItemCount.text = (++itemCount).toString()
-                        QuantityType.PU -> tvPUCount.text = (++puCount).toString()
-                        QuantityType.UNIT -> tvUnitCount.text = (++unitCount).toString()
-                    }
+                    changeQuantity(article.quantityType, 1)
                 }
             } else {
                 adding = 0
@@ -243,30 +252,33 @@ class Filler(
             }
 
             val adapter = rvArticleList.adapter as ArticleRecyclerViewAdapter
+            if (isPreviousScannedArticle) {
+                (requireContext() as Activity).runOnUiThread {
+                    adapter.notifyItemChanged(0, selectedArticle)
+                }
+            } else {
 
-            // put scanned article at the top position in the list, scroll to top of list if needed
-            var alreadyExisted = false
-            for ((i, art) in articleList.withIndex()) {
-                if (art.id == selectedArticle!!.id) {
-                    alreadyExisted = true
-                    articleList.removeAt(i)
-                    articleList.add(0,selectedArticle!!)
+                // put scanned article at the top position in the list, scroll to top of list if needed
+                var alreadyExisted = false
+                for ((i, art) in articleList.withIndex()) {
+                    if (art.id == selectedArticle!!.id) {
+                        alreadyExisted = true
+                        articleList.removeAt(i)
+                        articleList.add(0, selectedArticle!!)
+                        (requireContext() as Activity).runOnUiThread {
+                            adapter.notifyItemRemoved(i)
+                            adapter.notifyItemInserted(0)
+                            rvArticleList.scrollToPosition(0)
+                        }
+                        break
+                    }
+                }
+                if (!alreadyExisted) {
+                    articleList.add(0, article)
                     (requireContext() as Activity).runOnUiThread {
-                        adapter.notifyItemRemoved(i)
                         adapter.notifyItemInserted(0)
                         rvArticleList.scrollToPosition(0)
                     }
-                    break
-                }
-            }
-            if (!alreadyExisted) {
-                Log.d("fiiler:article-add-debug: article", article.toString())
-                Log.d("filler:article-add-debug: articleList before :", articleList.toString())
-                articleList.add(0,article)
-                Log.d("article-add-debug: articleList after :", articleList.toString())
-                (requireContext() as Activity).runOnUiThread {
-                    adapter.notifyItemInserted(0)
-                    rvArticleList.scrollToPosition(0)
                 }
             }
 
@@ -325,6 +337,23 @@ class Filler(
         Log.d("Filler:debug_double-passivetimeout: ", "resetPassiveTimeout ")
         passiveTimeout.cancel()
         passiveTimeout.start()
+    }
+
+    private fun changeQuantity(quantityType :QuantityType, amount :Int) {
+        when (quantityType) {
+            QuantityType.ITEM -> {
+                itemCount += amount
+                tvItemCount.text = (itemCount).toString()
+            }
+            QuantityType.PU -> {
+                puCount += amount
+                tvPUCount.text = (puCount).toString()
+            }
+            QuantityType.UNIT -> {
+                unitCount += amount
+                tvUnitCount.text = (unitCount).toString()
+            }
+        }
     }
 
 }
