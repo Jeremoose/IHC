@@ -44,6 +44,7 @@ class Filler(
     private val articleList: MutableList<Article> = ArrayList()
     private var selectedArticle: Article? = null
     private var adding: Int = 0
+    private var btnAdding: Int = 0
     private var itemCount: Int = 0
     private var puCount: Int = 0
     private var unitCount: Int = 0
@@ -184,10 +185,12 @@ class Filler(
         if (selectedArticle != null) {
             if (add) {
                 adding++
+                btnAdding++
                 selectedArticle!!.count++
                 changeQuantity(selectedArticle!!.quantityType, 1)
             } else {
                 adding--
+                btnAdding--
                 selectedArticle!!.count--
                 changeQuantity(selectedArticle!!.quantityType, -1)
             }
@@ -223,26 +226,30 @@ class Filler(
             // If the last article is scanned again it should be increased with 1 item
             if (selectedArticle != null) {
                 if (selectedArticle!!.id != article.id) {
-                    backend.setFillerItem(selectedArticle!!.barcode,
-                        adding.toString(),
-                        accessToken) {
-                        println(it)
-                        Toast.makeText(requireContext(), "Something went wrong", Toast.LENGTH_LONG)
-                            .show()
+                    if (btnAdding != 0) {
+                        backend.setFillerItem(selectedArticle!!.barcode,
+                            btnAdding.toString(),
+                            accessToken) {
+                            println(it)
+                            Toast.makeText(requireContext(),
+                                "Something went wrong",
+                                Toast.LENGTH_LONG)
+                                .show()
+                        }
                     }
                     adding = 0
                     selectedArticle = article
                 } else {
                     isPreviousScannedArticle = true
                     selectedArticle = article
-                    backend.setFillerItem(selectedArticle!!.barcode, "1", accessToken) {
+                    backend.setFillerItem(selectedArticle!!.barcode, (1+btnAdding).toString(), accessToken) {
                         println(it)
                         Toast.makeText(requireContext(), "Something went wrong", Toast.LENGTH_LONG)
                             .show()
                     }
                     // Add addtional count to the selected article, added count for this article and
                     // the item, PU and Unit counts at the top of the screen
-                    selectedArticle!!.count++
+                    selectedArticle!!.count += 1+btnAdding
                     adding++
                     changeQuantity(article.quantityType, 1)
                 }
@@ -251,10 +258,14 @@ class Filler(
                 selectedArticle = article
             }
 
+            btnAdding = 0
+
             val adapter = rvArticleList.adapter as ArticleRecyclerViewAdapter
             if (isPreviousScannedArticle) {
                 (requireContext() as Activity).runOnUiThread {
-                    adapter.notifyItemChanged(0, selectedArticle)
+                    articleList.removeAt(0)
+                    articleList.add(0, selectedArticle!!)
+                    adapter.notifyItemChanged(0)
                 }
             } else {
 
