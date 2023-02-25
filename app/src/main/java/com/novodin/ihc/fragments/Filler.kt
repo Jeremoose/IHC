@@ -83,6 +83,14 @@ class Filler(
                     Config.PassiveRemoveFromCradleTimeout.toLong()) {
                 override fun onTick(p0: Long) {}
                 override fun onFinish() {
+                    if (btnAdding != 0) {
+                        CoroutineScope(Dispatchers.IO).launch {
+                            backend.setFillerItem(selectedArticle!!.barcode, btnAdding.toString(), accessToken) {
+                                Toast.makeText(requireContext(), "Updating the database failed", Toast.LENGTH_LONG)
+                                    .show()
+                            }
+                        }
+                    }
                     // release the user if the user has already been identified
                     badge?.let {
                         CoroutineScope(Dispatchers.IO).launch {
@@ -107,6 +115,14 @@ class Filler(
             object : CountDownTimer(Config.PassiveTimeoutLong.toLong(), Config.PassiveTimeoutLong.toLong()) {
                 override fun onTick(p0: Long) {}
                 override fun onFinish() {
+                    if (btnAdding != 0) {
+                        CoroutineScope(Dispatchers.IO).launch {
+                            backend.setFillerItem(selectedArticle!!.barcode, btnAdding.toString(), accessToken) {
+                                Toast.makeText(requireContext(), "Updating the database failed", Toast.LENGTH_LONG)
+                                    .show()
+                            }
+                        }
+                    }
                     // release the user if the user has already been identified
                     badge?.let {
                         CoroutineScope(Dispatchers.IO).launch {
@@ -227,13 +243,9 @@ class Filler(
             if (selectedArticle != null) {
                 if (selectedArticle!!.id != article.id) {
                     if (btnAdding != 0) {
-                        backend.setFillerItem(selectedArticle!!.barcode,
-                            btnAdding.toString(),
-                            accessToken) {
+                        backend.setFillerItem(selectedArticle!!.barcode, btnAdding.toString(), accessToken) {
                             println(it)
-                            Toast.makeText(requireContext(),
-                                "Something went wrong",
-                                Toast.LENGTH_LONG)
+                            Toast.makeText(requireContext(),"Something went wrong", Toast.LENGTH_LONG)
                                 .show()
                         }
                     }
@@ -310,11 +322,20 @@ class Filler(
         override fun onReceive(context: Context?, intent: Intent) {
             Log.d("debug_unregister_fatal_intent", "action: ${intent.action}")
             if (intent.action == "com.symbol.intent.device.DOCKED") {
-                // 1. release user
-                // 2. stop cradletimeout
-                // 3. stop passive timeout
-                // 4. unregister receiver
-                // 5. pop backstack
+                // 1. update database with added items
+                // 2. release user
+                // 3. stop cradletimeout
+                // 4. stop passive timeout
+                // 5. unregister receiver
+                // 6. pop backstack
+                if (btnAdding != 0) {
+                    CoroutineScope(Dispatchers.IO).launch {
+                        backend.setFillerItem(selectedArticle!!.barcode, btnAdding.toString(), accessToken) {
+                            Toast.makeText(requireContext(), "Updating the database failed", Toast.LENGTH_LONG)
+                                .show()
+                        }
+                    }
+                }
                 badge?.let {
                     CoroutineScope(Dispatchers.IO).launch {
                         backend.loginRelease(badge!!, accessToken)
