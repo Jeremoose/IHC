@@ -449,7 +449,7 @@ class ShoppingCart(
                         CoroutineScope(Dispatchers.IO).launch {
                             backend.loginRelease(badge, accessToken)
                         }
-                        replace(R.id.flFragment, Approval(backend))
+                        replace(R.id.flFragment, Approval(backend, cartId, articleList))
                         addToBackStack("")
                         commit()
                     }
