@@ -179,7 +179,7 @@ class ProjectSelection(
                         Log.d("ProjectSelection:passiveTimeout", "passivetimeout cancel - onSubmit")
                         requireContext().unregisterReceiver(dockChangeReceiver)
                         replace(R.id.flFragment,
-                            Filler(badge!!, accessToken, backend))
+                            Filler(badge!!, accessToken, backend,true))
                         commit()
                     }
                     return@launch

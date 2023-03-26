@@ -139,7 +139,7 @@ class PackingSlip(
                     replace(R.id.flFragment,
                         Filler(badge!!,
                             accessToken,
-                            backend))
+                            backend, true))
                     commit()
                 }
 //                goToFillerFragment(badge, accessToken)

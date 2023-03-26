@@ -33,6 +33,7 @@ class Filler(
     private var badge: String,
     private var accessToken: String,
     private var backend: Backend,
+    private var fromPackingslip: Boolean,
 ) :
     Fragment(R.layout.fragment_filler) {
     private var intentFilter = IntentFilter()
@@ -73,6 +74,7 @@ class Filler(
         super.onCreate(savedInstanceState)
         intentFilter.addAction("com.symbol.intent.device.DOCKED")
         intentFilter.addAction("com.symbol.intent.device.UNDOCKED")
+
 
         // setup listener to battery change (cradle detection)
         requireContext().registerReceiver(dockChangeReceiver, intentFilter)
@@ -147,6 +149,12 @@ class Filler(
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        if (fromPackingslip) {
+            passiveTimeout.start()
+        } else {
+            removeFromCradleTimeout.start()
+        }
+
         rvArticleList = view.findViewById(R.id.rvArticleList) as RecyclerView
         tvItemCount = view.findViewById(R.id.tvItemCount) as TextView
         tvPUCount = view.findViewById(R.id.tvPUCount) as TextView
@@ -185,10 +193,14 @@ class Filler(
                 .setNegativeButton("No") { dialog, _ ->
                     dialog.dismiss()
                 }
-            val alert = builder.create()
-            alert.window?.setFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            dialog = builder.create()
+            dialog!!.window?.setFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
-            alert.show()
+            dialog!!.show()
+//            val alert = builder.create()
+//            alert.window?.setFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+//                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
+//            alert.show()
         }
 
         val barcodeScanner = BarcodeScanner(requireContext())

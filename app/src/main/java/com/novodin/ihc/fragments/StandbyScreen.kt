@@ -280,7 +280,7 @@ class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
             parentFragmentManager.beginTransaction().apply {
                 barcodeScanner.onClosed()
                 replace(R.id.flFragment,
-                    Filler(badge, accessToken, backend))
+                    Filler(badge, accessToken, backend, false))
                 addToBackStack("standby")
                 commit()
             }
