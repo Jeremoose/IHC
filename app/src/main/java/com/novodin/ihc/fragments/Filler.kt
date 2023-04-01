@@ -185,6 +185,14 @@ class Filler(
             builder.setMessage("Are you sure you want to stop?")
                 .setCancelable(false)
                 .setPositiveButton("Yes") { _, _ ->
+                    if (btnAdding != 0) {
+                        CoroutineScope(Dispatchers.IO).launch {
+                            backend.setFillerItem(selectedArticle!!.barcode, btnAdding.toString(), accessToken) {
+                                Toast.makeText(requireContext(), "Updating the database failed", Toast.LENGTH_LONG)
+                                    .show()
+                            }
+                        }
+                    }
                     CoroutineScope(Dispatchers.IO).launch {
                         backend.loginRelease(badge, accessToken)
                     }

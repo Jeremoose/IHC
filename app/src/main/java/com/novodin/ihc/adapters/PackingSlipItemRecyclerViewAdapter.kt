@@ -15,6 +15,8 @@ class PackingSlipItemRecyclerViewAdapter(
 
     var selectedValuePosition: Int = -1
 
+    private var onItemSelectExtra: () -> Unit = {}
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         return ViewHolder(
             FragmentPackingSlipItemBinding.inflate(
@@ -32,6 +34,7 @@ class PackingSlipItemRecyclerViewAdapter(
 
         holder.itemView.setOnClickListener {
             selectedValuePosition = position
+            onItemSelectExtra.invoke()
             notifyDataSetChanged()
         }
 
@@ -42,6 +45,11 @@ class PackingSlipItemRecyclerViewAdapter(
     }
 
     override fun getItemCount(): Int = packingSlipItems.size
+
+    fun setOnItemSelectExtra(cb: () -> Unit) {
+        onItemSelectExtra = cb
+    }
+
 
     inner class ViewHolder(binding: FragmentPackingSlipItemBinding) :
         RecyclerView.ViewHolder(binding.root) {

@@ -6,6 +6,8 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.res.ColorStateList
+import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
 import android.os.CountDownTimer
@@ -14,10 +16,12 @@ import androidx.fragment.app.Fragment
 import android.view.View
 import android.view.WindowManager
 import android.widget.ImageButton
+import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.recyclerview.widget.RecyclerView
 import com.novodin.ihc.R
+import com.novodin.ihc.adapters.ArticleRecyclerViewAdapter
 import com.novodin.ihc.adapters.PackingSlipItemRecyclerViewAdapter
 import com.novodin.ihc.config.Config
 import com.novodin.ihc.model.Article
@@ -32,7 +36,7 @@ import org.json.JSONArray
 class PackingSlip(
     private var accessToken: String,
     private var backend: Backend,
-    private var badge: String? = null,
+    private var badge: String,
 //    private val packingSlipItemList: ArrayList<PackingSlipItem>,
     private val packingSlipItems: JSONArray,
 ) :
@@ -43,7 +47,15 @@ class PackingSlip(
     private lateinit var rvPackingSlipItemList: RecyclerView
     private var dialog: AlertDialog? = null
 
-    private lateinit var ibAdd: ImageButton
+    private lateinit var ibNavThree: ImageButton
+    private lateinit var textView5: TextView
+    private lateinit var ibNavFour: ImageButton
+    private lateinit var textView6: TextView
+
+    // View color variables
+    private var colorPrimaryEnabled = 0
+    private var colorPrimaryDisabled = 0
+
 
     // Timer variables
     private lateinit var passiveTimeout: CountDownTimer
@@ -111,6 +123,11 @@ class PackingSlip(
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        colorPrimaryDisabled =
+            requireContext().getColor(com.google.android.material.R.color.material_on_primary_disabled)
+        colorPrimaryEnabled =
+            requireContext().getColor(com.google.android.material.R.color.material_on_primary_emphasis_high_type)
+
         for (i in 0 until packingSlipItems.length()) {
             val projectJSON = packingSlipItems.getJSONObject(i)
             packingSlipItemList.add(PackingSlipItem(projectJSON.getString("company_name"),
@@ -121,13 +138,6 @@ class PackingSlip(
         builder.setMessage("Use packing slips?")
             .setCancelable(false)
             .setPositiveButton("Yes") { _, _ ->
-//                val packingSlipItemArrayList = ArrayList<PackingSlipItem>()
-//                for (i in 0 until packingSlipItems.length()) {
-//                    val projectJSON = packingSlipItems.getJSONObject(i)
-//                    packingSlipItemList.add(PackingSlipItem(projectJSON.getString("company_name"),
-//                        projectJSON.getString("number")))
-//                }
-//                goToPackingSlipFragment(accessToken, badge, packingSlipItemArrayList)
                 dialog?.dismiss()
             }
             .setNegativeButton("No") { _, _ ->
@@ -153,38 +163,103 @@ class PackingSlip(
 
         rvPackingSlipItemList = view.findViewById(R.id.rvPackingSlip) as RecyclerView
         rvPackingSlipItemList.adapter = PackingSlipItemRecyclerViewAdapter(packingSlipItemList)
+        (rvPackingSlipItemList.adapter as PackingSlipItemRecyclerViewAdapter).setOnItemSelectExtra { enableAddButton() }
 
-        ibAdd = view.findViewById(R.id.ibNavFour) as ImageButton
 
-        ibAdd.setOnClickListener {
-            val adapter = rvPackingSlipItemList.adapter as PackingSlipItemRecyclerViewAdapter
-            val pos = adapter.selectedValuePosition
-            if (pos == -1) return@setOnClickListener // return if nothing is selected
+        ibNavThree = view.findViewById(R.id.ibNavThree) as ImageButton
+        ibNavFour = view.findViewById(R.id.ibNavFour) as ImageButton
+        textView6 = view.findViewById(R.id.textView6) as TextView
 
-            val packingSlipListItem = packingSlipItemList[pos]
+        ibNavThree.setOnClickListener { stop() }
+        ibNavFour.setOnClickListener { add() }
 
-            removeFromCradleTimeout.cancel()
-            passiveTimeout.cancel()
-
-            // add item in backend
-            CoroutineScope(Dispatchers.IO).launch {
-                backend.packingSlip(packingSlipListItem.number, accessToken)
-                (requireContext() as Activity).runOnUiThread {
-                    Toast.makeText(requireContext(),
-                        "Filled stock from packing slip ${packingSlipListItem.number}",
-                        Toast.LENGTH_LONG)
-                        .show()
-                }
-            }
-            packingSlipItemList.removeAt(pos)
-
-            adapter.notifyItemChanged(pos)
-
-        }
+        initNavButtons(view)
 
     }
 
+    private fun add() {
+        val adapter = rvPackingSlipItemList.adapter as PackingSlipItemRecyclerViewAdapter
+        val pos = adapter.selectedValuePosition
 
+        if (pos == -1) return // return if nothing is selected
+
+        val packingSlipListItem = packingSlipItemList[pos]
+
+        removeFromCradleTimeout.cancel()
+        passiveTimeout.cancel()
+
+        // add item in backend
+        CoroutineScope(Dispatchers.IO).launch {
+            backend.packingSlip(packingSlipListItem.number, accessToken)
+            (requireContext() as Activity).runOnUiThread {
+                Toast.makeText(requireContext(),
+                    "Filled stock from packing slip ${packingSlipListItem.number}",
+                    Toast.LENGTH_LONG)
+                    .show()
+            }
+        }
+        packingSlipItemList.removeAt(pos)
+        (requireContext() as Activity).runOnUiThread {
+            adapter.notifyItemRemoved(pos)
+        }
+    }
+
+    private fun stop() {
+        val builder = AlertDialog.Builder(requireContext())
+        builder.setMessage("Are you sure you want to stop?")
+            .setCancelable(false)
+            .setPositiveButton("Yes") { _, _ ->
+                CoroutineScope(Dispatchers.IO).launch {
+                    passiveTimeout.cancel()
+                    Log.d("ShoppingCart:debug_double-passivetimeout", "passivetimeout cancel - stop - approvalState true")
+                    requireContext().unregisterReceiver(dockChangeReceiver)
+                    backend.loginRelease(badge, accessToken)
+                }
+                requireActivity().supportFragmentManager.popBackStack()
+            }
+            .setNegativeButton("No") { dialog, _ ->
+                dialog.dismiss()
+            }
+        dialog = builder.create()
+        dialog!!.window?.setFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
+        dialog!!.show()
+    }
+
+    private fun enableAddButton() {
+        Log.d("Packingslip::enableAddButton", "enter")
+        Log.d("Packingslip::enableAddButton", ibNavFour.toString())
+
+        ibNavFour.isEnabled = true
+        ibNavFour.imageTintList = ColorStateList.valueOf(Color.WHITE)
+        textView6.setTextColor(colorPrimaryEnabled)
+    }
+
+    private fun initNavButtons(view: View) {
+        // First nav button
+        (view.findViewById(R.id.ibNavOne) as ImageButton).apply {
+            this.setImageResource(R.drawable.ic_minus)
+            this.isEnabled = false
+        }
+
+        // Second nav button
+        (view.findViewById(R.id.ibNavTwo) as ImageButton).apply {
+            this.setImageResource(R.drawable.ic_arrow_back)
+            this.isEnabled = false
+        }
+
+        // Third nav button
+        (view.findViewById(R.id.ibNavThree) as ImageButton).apply {
+            this.setImageResource(R.drawable.ic_cancel)
+            this.isEnabled = true
+        }
+
+        // Fourth nav button
+        (view.findViewById(R.id.ibNavFour) as ImageButton).apply {
+            this.setImageResource(R.drawable.ic_next)
+            this.isEnabled = false
+        }
+    }
 
     private val dockChangeReceiver: BroadcastReceiver = object : BroadcastReceiver() {
         @RequiresApi(Build.VERSION_CODES.Q)
@@ -223,5 +298,9 @@ class PackingSlip(
                 passiveTimeout.start()
             }
         }
+    }
+    private fun resetPassiveTimeout() {
+        passiveTimeout.cancel()
+        passiveTimeout.start()
     }
 }
