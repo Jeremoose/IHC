@@ -186,7 +186,7 @@ class PackingSlip(
         val packingSlipListItem = packingSlipItemList[pos]
 
         removeFromCradleTimeout.cancel()
-        passiveTimeout.cancel()
+        resetPassiveTimeout()
 
         // add item in backend
         CoroutineScope(Dispatchers.IO).launch {
@@ -206,6 +206,7 @@ class PackingSlip(
 
     private fun stop() {
         val builder = AlertDialog.Builder(requireContext())
+        resetPassiveTimeout()
         builder.setMessage("Are you sure you want to stop?")
             .setCancelable(false)
             .setPositiveButton("Yes") { _, _ ->
@@ -219,6 +220,7 @@ class PackingSlip(
             }
             .setNegativeButton("No") { dialog, _ ->
                 dialog.dismiss()
+                resetPassiveTimeout()
             }
         dialog = builder.create()
         dialog!!.window?.setFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
@@ -233,6 +235,7 @@ class PackingSlip(
         ibNavFour.isEnabled = true
         ibNavFour.imageTintList = ColorStateList.valueOf(Color.WHITE)
         textView6.setTextColor(colorPrimaryEnabled)
+        resetPassiveTimeout()
     }
 
     private fun initNavButtons(view: View) {
