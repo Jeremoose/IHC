@@ -28,6 +28,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.lang.Runnable
 import kotlin.math.abs
+import android.util.Base64
 
 class Filler(
     private var badge: String,
@@ -87,7 +88,8 @@ class Filler(
                 override fun onFinish() {
                     if (btnAdding != 0) {
                         CoroutineScope(Dispatchers.IO).launch {
-                            backend.setFillerItem(selectedArticle!!.barcode, btnAdding.toString(), accessToken) {
+                            val b64encodedBarcodeSelected = Base64.encodeToString(selectedArticle!!.barcode.toByteArray(), Base64.DEFAULT)
+                            backend.setFillerItem(b64encodedBarcodeSelected, btnAdding.toString(), accessToken) {
                                 Toast.makeText(requireContext(), "Updating the database failed", Toast.LENGTH_LONG)
                                     .show()
                             }
@@ -119,7 +121,8 @@ class Filler(
                 override fun onFinish() {
                     if (btnAdding != 0) {
                         CoroutineScope(Dispatchers.IO).launch {
-                            backend.setFillerItem(selectedArticle!!.barcode, btnAdding.toString(), accessToken) {
+                            val b64encodedBarcodeSelected = Base64.encodeToString(selectedArticle!!.barcode.toByteArray(), Base64.DEFAULT)
+                            backend.setFillerItem(b64encodedBarcodeSelected, btnAdding.toString(), accessToken) {
                                 Toast.makeText(requireContext(), "Updating the database failed", Toast.LENGTH_LONG)
                                     .show()
                             }
@@ -187,7 +190,8 @@ class Filler(
                 .setPositiveButton("Yes") { _, _ ->
                     if (btnAdding != 0) {
                         CoroutineScope(Dispatchers.IO).launch {
-                            backend.setFillerItem(selectedArticle!!.barcode, btnAdding.toString(), accessToken) {
+                            val b64encodedBarcodeSelected = Base64.encodeToString(selectedArticle!!.barcode.toByteArray(), Base64.DEFAULT)
+                            backend.setFillerItem(b64encodedBarcodeSelected, btnAdding.toString(), accessToken) {
                                 Toast.makeText(requireContext(), "Updating the database failed", Toast.LENGTH_LONG)
                                     .show()
                             }
@@ -247,7 +251,8 @@ class Filler(
 
         CoroutineScope(Dispatchers.IO).launch {
 
-            val item = backend.getFillerItem(barcode, accessToken) {
+            val b64encodedBarcode = Base64.encodeToString(barcode.toByteArray(), Base64.DEFAULT)
+            val item = backend.getFillerItem(b64encodedBarcode, accessToken) {
                 Toast.makeText(requireContext(), "Unknown barcode", Toast.LENGTH_LONG).show()
             }
             val article = Article(item!!.getInt("id"),
@@ -260,10 +265,12 @@ class Filler(
             var isPreviousScannedArticle = false
             // If a new article is scanned, the previous one should be stored in the database
             // If the last article is scanned again it should be increased with 1 item
+
             if (selectedArticle != null) {
+                val b64encodedBarcodeSelected = Base64.encodeToString(selectedArticle!!.barcode.toByteArray(), Base64.DEFAULT)
                 if (selectedArticle!!.id != article.id) {
                     if (btnAdding != 0) {
-                        backend.setFillerItem(selectedArticle!!.barcode, btnAdding.toString(), accessToken) {
+                        backend.setFillerItem(b64encodedBarcodeSelected, btnAdding.toString(), accessToken) {
                             println(it)
                             Toast.makeText(requireContext(),"Something went wrong", Toast.LENGTH_LONG)
                                 .show()
@@ -274,7 +281,7 @@ class Filler(
                 } else {
                     isPreviousScannedArticle = true
                     selectedArticle = article
-                    backend.setFillerItem(selectedArticle!!.barcode, (1+btnAdding).toString(), accessToken) {
+                    backend.setFillerItem(b64encodedBarcodeSelected, (1+btnAdding).toString(), accessToken) {
                         println(it)
                         Toast.makeText(requireContext(), "Something went wrong", Toast.LENGTH_LONG)
                             .show()
@@ -350,7 +357,8 @@ class Filler(
                 // 6. pop backstack
                 if (btnAdding != 0) {
                     CoroutineScope(Dispatchers.IO).launch {
-                        backend.setFillerItem(selectedArticle!!.barcode, btnAdding.toString(), accessToken) {
+                        val b64encodedBarcodeSelected = Base64.encodeToString(selectedArticle!!.barcode.toByteArray(), Base64.DEFAULT)
+                        backend.setFillerItem(b64encodedBarcodeSelected, btnAdding.toString(), accessToken) {
                             Toast.makeText(requireContext(), "Updating the database failed", Toast.LENGTH_LONG)
                                 .show()
                         }

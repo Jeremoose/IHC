@@ -222,7 +222,6 @@ class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
 //                        Toast.makeText(requireContext(), "Something went wrong", Toast.LENGTH_LONG)
 //                            .show()
                     }
-                    println("poll result")
                     try {
                         when (resp!!.getInt("type")) {
                             0 -> goToShoppingCart(resp.getString("accessToken"),

@@ -28,6 +28,7 @@ import com.novodin.ihc.network.Backend
 import com.novodin.ihc.zebra.BarcodeScanner
 import kotlinx.coroutines.*
 import org.json.JSONArray
+import android.util.Base64
 
 class ShoppingCart(
     private var badge: String,
@@ -295,8 +296,10 @@ class ShoppingCart(
                 Toast.LENGTH_LONG).show()
             return
         }
+
+        val b64encodedBarcode = Base64.encodeToString(barcode.toByteArray(), Base64.DEFAULT)
         CoroutineScope(Dispatchers.IO).launch {
-            val item = backend.addItem(cartId, barcode, accessToken) {
+            val item = backend.addItem(cartId, b64encodedBarcode, accessToken) {
                 Toast.makeText(requireContext(), "Unknown barcode", Toast.LENGTH_LONG).show()
             }
 
@@ -357,9 +360,10 @@ class ShoppingCart(
         val article = articleList[pos]
 
         // add item in backend
+        val b64encodedBarcode = Base64.encodeToString(article.barcode.toByteArray(), Base64.DEFAULT)
         CoroutineScope(Dispatchers.IO).launch {
             backend.addItem(cartId,
-                article.barcode,
+                b64encodedBarcode,
                 accessToken
             ) {
                 Toast.makeText(requireContext(), "Unkown barcode", Toast.LENGTH_LONG).show()
