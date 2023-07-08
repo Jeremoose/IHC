@@ -6,6 +6,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.graphics.Color
 import android.os.*
 import android.util.Log
 import android.view.View
@@ -29,6 +30,8 @@ import kotlinx.coroutines.launch
 import java.lang.Runnable
 import kotlin.math.abs
 import android.util.Base64
+import androidx.fragment.app.FragmentManager
+import com.novodin.ihc.SessionManager
 
 class Filler(
     private var badge: String,
@@ -40,6 +43,10 @@ class Filler(
     private var intentFilter = IntentFilter()
 
     private var dialog: AlertDialog? = null
+    private lateinit var fillerSessionId: String
+
+    // Barcode scanner
+    private lateinit var barcodeScanner: BarcodeScanner
 
     // Filler variables
     private lateinit var scanTimeout: Runnable
@@ -66,19 +73,36 @@ class Filler(
     private lateinit var ibAdd: ImageButton
     private lateinit var ibRemove: ImageButton
     private lateinit var ibStop: ImageButton
+    private lateinit var tvAdd: TextView
+    private lateinit var tvRemove: TextView
+
+    // View color variables
+    private var colorPrimaryEnabled = 0
+    private var colorPrimaryDisabled = 0
 
     // Timer variables
     private lateinit var passiveTimeout: CountDownTimer
     private lateinit var removeFromCradleTimeout: CountDownTimer
 
+    private var isCompleted: Boolean = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         intentFilter.addAction("com.symbol.intent.device.DOCKED")
         intentFilter.addAction("com.symbol.intent.device.UNDOCKED")
-
-
-        // setup listener to battery change (cradle detection)
         requireContext().registerReceiver(dockChangeReceiver, intentFilter)
+
+        val sessionId = SessionManager.getInstance().getSessionId()
+        val sessionActive = SessionManager.getInstance().getSessionState()
+        if (sessionId != null) {
+            Log.d("Filler:sessionId", sessionId)
+            Log.d("Filler:sessionState", sessionActive.toString())
+            fillerSessionId = sessionId
+        }
+
+        isCompleted = false
+
         // setup "remove from cradle" timeout
         removeFromCradleTimeout =
             object :
@@ -86,6 +110,7 @@ class Filler(
                     Config.PassiveRemoveFromCradleTimeout.toLong()) {
                 override fun onTick(p0: Long) {}
                 override fun onFinish() {
+                    isCompleted = true
                     if (btnAdding != 0) {
                         CoroutineScope(Dispatchers.IO).launch {
                             val b64encodedBarcodeSelected = Base64.encodeToString(selectedArticle!!.barcode.toByteArray(), Base64.DEFAULT)
@@ -111,7 +136,9 @@ class Filler(
                         Log.d("Filler:debug_unregister_catch",
                             "removefromcradletimeout unregister error: $e")
                     }
-                    requireActivity().supportFragmentManager.popBackStack()
+//                    requireActivity().supportFragmentManager.popBackStack()
+                    parentFragmentManager.popBackStack("standby",
+                        FragmentManager.POP_BACK_STACK_INCLUSIVE)
                 }
             }
         // setup passive user timeout
@@ -119,38 +146,64 @@ class Filler(
             object : CountDownTimer(Config.PassiveTimeoutLong.toLong(), Config.PassiveTimeoutLong.toLong()) {
                 override fun onTick(p0: Long) {}
                 override fun onFinish() {
-                    if (btnAdding != 0) {
-                        CoroutineScope(Dispatchers.IO).launch {
-                            val b64encodedBarcodeSelected = Base64.encodeToString(selectedArticle!!.barcode.toByteArray(), Base64.DEFAULT)
-                            backend.setFillerItem(b64encodedBarcodeSelected, btnAdding.toString(), accessToken) {
-                                Toast.makeText(requireContext(), "Updating the database failed", Toast.LENGTH_LONG)
-                                    .show()
+                    isCompleted = true
+                    val sessionActive = SessionManager.getInstance().getSessionState()
+                    val sessionId = SessionManager.getInstance().getSessionId()
+                    if (sessionId != null) {
+                        Log.d("Filler:passivetimeout:onFinish sessionId = ", sessionId)
+                    }
+                    if (sessionId.equals(fillerSessionId)) {
+                        if (btnAdding != 0) {
+                            CoroutineScope(Dispatchers.IO).launch {
+                                val b64encodedBarcodeSelected = Base64.encodeToString(
+                                    selectedArticle!!.barcode.toByteArray(),
+                                    Base64.DEFAULT)
+                                backend.setFillerItem(b64encodedBarcodeSelected,
+                                    btnAdding.toString(),
+                                    accessToken) {
+                                    Toast.makeText(requireContext(),
+                                        "Updating the database failed",
+                                        Toast.LENGTH_LONG)
+                                        .show()
+                                }
                             }
                         }
-                    }
-                    // release the user if the user has already been identified
-                    badge?.let {
-                        CoroutineScope(Dispatchers.IO).launch {
-                            backend.loginRelease(badge!!, accessToken)
+                        // release the user if the user has already been identified
+                        badge?.let {
+                            CoroutineScope(Dispatchers.IO).launch {
+                                backend.loginRelease(badge!!, accessToken)
+                            }
+                        }
+                        removeFromCradleTimeout.cancel()
+                        dialog?.cancel()
+                        Log.d("Filler:onCreate", "passivetimeout unregister")
+                        try {
+                            requireContext().unregisterReceiver(dockChangeReceiver)
+                            parentFragmentManager.popBackStack("standby",
+                                FragmentManager.POP_BACK_STACK_INCLUSIVE)
+
+                        } catch (e: IllegalArgumentException) {
+                            Log.d("Filler:unregisterReceiver",
+                                "error: $e")
+                        } catch (e2: IllegalStateException) {
+                            Log.d("Filler:unregisterReceiver",
+                                "error: $e2")
                         }
                     }
-                    removeFromCradleTimeout.cancel()
-                    dialog?.cancel()
-                    Log.d("Filler:debug_unregister_fatal", "passivetimeout unregister")
-                    try {
-                        requireContext().unregisterReceiver(dockChangeReceiver)
-
-                    } catch (e: IllegalArgumentException) {
-                        Log.d("Filler:debug_unregister_catch",
-                            "passivetimeout unregister error: $e")
-                    }
-                    requireActivity().supportFragmentManager.popBackStack()
                 }
             }
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        Log.d("Filler:onViewCreated", "")
         super.onViewCreated(view, savedInstanceState)
+
+        colorPrimaryDisabled =
+            requireContext().getColor(com.google.android.material.R.color.material_on_primary_disabled)
+        colorPrimaryEnabled =
+            requireContext().getColor(com.google.android.material.R.color.material_on_primary_emphasis_high_type)
+
+        initNavButtons(view)
 
         if (fromPackingslip) {
             passiveTimeout.start()
@@ -177,6 +230,8 @@ class Filler(
         ibAdd = view.findViewById(R.id.ibNavFour) as ImageButton
         ibRemove = view.findViewById(R.id.ibNavOne) as ImageButton
         ibStop = view.findViewById(R.id.ibNavThree) as ImageButton
+        tvAdd = view.findViewById(R.id.textView10) as TextView
+        tvRemove = view.findViewById(R.id.textView7) as TextView
 
         tvAdding.text = "0"
         tvNewTotal.text = "0"
@@ -197,27 +252,138 @@ class Filler(
                             }
                         }
                     }
+                    isCompleted = true
                     CoroutineScope(Dispatchers.IO).launch {
                         backend.loginRelease(badge, accessToken)
                     }
-                    requireActivity().supportFragmentManager.popBackStack()
+                    passiveTimeout.cancel()
+                    parentFragmentManager.popBackStack("standby",
+                        FragmentManager.POP_BACK_STACK_INCLUSIVE)
                 }
                 .setNegativeButton("No") { dialog, _ ->
+                    resetPassiveTimeout()
                     dialog.dismiss()
                 }
             dialog = builder.create()
             dialog!!.window?.setFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
             dialog!!.show()
-//            val alert = builder.create()
-//            alert.window?.setFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-//                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
-//            alert.show()
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+
+        val sessionId = SessionManager.getInstance().getSessionId()
+        if (sessionId != null) {
+            Log.d("Filler:onResume sessionId = ", sessionId)
+            Log.d("Filler:onResume fillerSessionId = ", fillerSessionId)
         }
 
-        val barcodeScanner = BarcodeScanner(requireContext())
+        if (sessionId.equals(fillerSessionId)) {
+            Log.d("Filler:onResume", "resetPassiveTimeout")
+            resetPassiveTimeout()
+        }
+
+        barcodeScanner = BarcodeScanner(requireContext())
         barcodeScanner.setDataCallback(::onBarcodeScanData)
         barcodeScanner.setStatusCallback(::onBarcodeScanStatus)
+        requireContext().registerReceiver(dockChangeReceiver, intentFilter)
+    }
+
+    override fun onPause() {
+        super.onPause()
+        val sessionId = SessionManager.getInstance().getSessionId()
+        if (sessionId != null) {
+            Log.d("Filler:onPause sessionId = ", sessionId)
+            Log.d("Filler:onPause fillerSessionId = ", fillerSessionId)
+        }
+
+        barcodeScanner.onClosed()
+        passiveTimeout.cancel()
+        Log.d("Filler:onPause", "cancel passivetimeout")
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        val sessionId = SessionManager.getInstance().getSessionId()
+        if (sessionId != null) {
+            Log.d("Filler:onDestroy sessionId = ", sessionId)
+            Log.d("Filler:onDestroy fillerSessionId = ", fillerSessionId)
+        }
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        val sessionId = SessionManager.getInstance().getSessionId()
+        if (sessionId != null) {
+            Log.d("Filler:onDestroyView sessionId = ", sessionId)
+            Log.d("Filler:onDestroyView fillerSessionId = ", fillerSessionId)
+        }
+    }
+    private fun initNavButtons(view: View) {
+        // First nav button
+        (view.findViewById(R.id.ibNavOne) as ImageButton).apply {
+            this.setImageResource(R.drawable.ic_minus)
+            this.isEnabled = true
+        }
+        (view.findViewById(R.id.textView7) as TextView).apply {
+            this.text = "Remove"
+            this.setTextColor(colorPrimaryEnabled)
+        }
+
+        // Second nav button
+        (view.findViewById(R.id.ibNavTwo) as ImageButton).apply {
+            this.setImageResource(R.drawable.ic_arrow_back)
+            this.isEnabled = false
+        }
+        (view.findViewById(R.id.textView8) as TextView).apply {
+            this.text = "Back"
+            this.setTextColor(colorPrimaryDisabled)
+        }
+
+        // Third nav button (always enabled)
+
+        (view.findViewById(R.id.ibNavThree) as ImageButton).apply {
+            this.setImageResource(R.drawable.ic_cancel)
+            this.isEnabled = true
+        }
+        (view.findViewById(R.id.textView9) as TextView).apply {
+            this.text = "Stop"
+            this.setTextColor(colorPrimaryEnabled)
+        }
+
+
+        // Fourth nav button
+        (view.findViewById(R.id.ibNavFour) as ImageButton).apply {
+            this.setImageResource(R.drawable.ic_plus)
+            this.isEnabled = true
+        }
+        (view.findViewById(R.id.textView10) as TextView).apply {
+            this.text = "Add"
+            this.setTextColor(colorPrimaryEnabled)
+        }
+    }
+
+
+    private fun enablePlusMinus() {
+        if (!(ibRemove.isEnabled || ibAdd.isEnabled)) {
+            ibRemove.isEnabled = true
+//            ibRemove.setColorFilter(Color.WHITE)
+            tvRemove.setTextColor(colorPrimaryEnabled)
+            ibAdd.isEnabled = true
+//            ibAdd.setColorFilter(Color.WHITE)
+            tvAdd.setTextColor(colorPrimaryEnabled)
+        }
+    }
+
+    private fun disablePlusMinus() {
+        if (ibRemove.isEnabled || ibAdd.isEnabled) {
+            ibRemove.isEnabled = false
+            tvRemove.setTextColor(colorPrimaryDisabled)
+            ibAdd.isEnabled = false
+            tvAdd.setTextColor(colorPrimaryDisabled)
+        }
     }
 
     private fun onModifyAmount(add: Boolean) {
@@ -262,6 +428,7 @@ class Filler(
                 QuantityType.fromInt(item.getInt("cat")),
                 item.getInt("currentamount"))
 
+            Log.d("Filler:onBarcodeScanData article = ", article.toString())
             var isPreviousScannedArticle = false
             // If a new article is scanned, the previous one should be stored in the database
             // If the last article is scanned again it should be increased with 1 item
@@ -347,48 +514,63 @@ class Filler(
     private val dockChangeReceiver: BroadcastReceiver = object : BroadcastReceiver() {
         @RequiresApi(Build.VERSION_CODES.Q)
         override fun onReceive(context: Context?, intent: Intent) {
-            Log.d("debug_unregister_fatal_intent", "action: ${intent.action}")
-            if (intent.action == "com.symbol.intent.device.DOCKED") {
-                // 1. update database with added items
-                // 2. release user
-                // 3. stop cradletimeout
-                // 4. stop passive timeout
-                // 5. unregister receiver
-                // 6. pop backstack
-                if (btnAdding != 0) {
-                    CoroutineScope(Dispatchers.IO).launch {
-                        val b64encodedBarcodeSelected = Base64.encodeToString(selectedArticle!!.barcode.toByteArray(), Base64.DEFAULT)
-                        backend.setFillerItem(b64encodedBarcodeSelected, btnAdding.toString(), accessToken) {
-                            Toast.makeText(requireContext(), "Updating the database failed", Toast.LENGTH_LONG)
-                                .show()
+            Log.d("Filler:dockChangeReceiver", "action: ${intent.action}")
+            val sessionId = SessionManager.getInstance().getSessionId()
+            if (sessionId != null) {
+                Log.d("Filler:dockChangeReceiver:onReceive sessionId = ", sessionId)
+                Log.d("Filler:dockChangeReceiver:onReceive fillerSessionId = ", fillerSessionId)
+            }
+            if (sessionId.equals(fillerSessionId) && !isCompleted) {
+                if (intent.action == "com.symbol.intent.device.DOCKED") {
+                    // 1. update database with added items
+                    // 2. release user
+                    // 3. stop cradletimeout
+                    // 4. stop passive timeout
+                    // 5. unregister receiver
+                    // 6. pop backstack
+                    if (btnAdding != 0) {
+                        CoroutineScope(Dispatchers.IO).launch {
+                            val b64encodedBarcodeSelected =
+                                Base64.encodeToString(selectedArticle!!.barcode.toByteArray(),
+                                    Base64.DEFAULT)
+                            backend.setFillerItem(b64encodedBarcodeSelected,
+                                btnAdding.toString(),
+                                accessToken) {
+                                Toast.makeText(requireContext(),
+                                    "Updating the database failed",
+                                    Toast.LENGTH_LONG)
+                                    .show()
+                            }
                         }
                     }
-                }
-                badge?.let {
-                    CoroutineScope(Dispatchers.IO).launch {
-                        backend.loginRelease(badge!!, accessToken)
+                    badge?.let {
+                        CoroutineScope(Dispatchers.IO).launch {
+                            backend.loginRelease(badge!!, accessToken)
+                        }
+                    }
+                    removeFromCradleTimeout.cancel()
+                    passiveTimeout.cancel()
+                    dialog?.cancel()
+                    Log.d("Filler:passiveTimeout", "passivetimeout cancel - dockChangeReceiver")
+                    try {
+                        requireContext().unregisterReceiver(this)
+                        parentFragmentManager.popBackStack("standby",
+                            FragmentManager.POP_BACK_STACK_INCLUSIVE)
+                    } catch (e: IllegalArgumentException) {
+                        Log.d("Filler:unregisterReceiver",
+                            "error: $e")
+                    } catch (e2: IllegalStateException) {
+                        Log.d("Filler:unregisterReceiver",
+                            "error: $e2")
                     }
                 }
-                removeFromCradleTimeout.cancel()
-                passiveTimeout.cancel()
-                dialog?.cancel()
-                Log.d("Filler:passiveTimeout", "passivetimeout cancel - dockChangeReceiver")
 
-                try {
-                    requireContext().unregisterReceiver(this)
-
-                } catch (e: IllegalArgumentException) {
-                    Log.d("Filler:debug_unregister_catch",
-                        "battery_status_charging and unregistering receiver here error: $e")
+                if (intent.action == "com.symbol.intent.device.UNDOCKED") {
+                    // 1. stop cradle timeout
+                    // 2. start passive timeout
+                    removeFromCradleTimeout.cancel()
+                    passiveTimeout.start()
                 }
-                requireActivity().supportFragmentManager.popBackStack()
-            }
-
-            if (intent.action == "com.symbol.intent.device.UNDOCKED") {
-                // 1. stop cradle timeout
-                // 2. start passive timeout
-                removeFromCradleTimeout.cancel()
-                passiveTimeout.start()
             }
         }
     }

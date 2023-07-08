@@ -9,6 +9,7 @@ import com.android.volley.toolbox.JsonArrayRequest
 import com.android.volley.toolbox.JsonObjectRequest
 import com.android.volley.toolbox.RequestFuture
 import com.android.volley.toolbox.Volley
+import com.novodin.ihc.DeviceManager
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.suspendCancellableCoroutine
 import org.json.JSONArray
@@ -25,6 +26,22 @@ import kotlin.coroutines.suspendCoroutine
 class Backend(context: Context, private val baseURL: String) {
     private val requestQueue = Volley.newRequestQueue(context)
     private val apiKey = "ZKbaStU4C2YcNEfuLLSbgeq8vKXgt994"
+
+    suspend fun health(memory: String, errorListener: Response.ErrorListener): JSONObject? {
+        return runJSONObjectRequest(Request.Method.POST,
+            "/scanner/health",
+            JSONObject("{\"memory\":\"$memory\"}"),
+            errorListener
+        )
+    }
+
+    suspend fun log(log: String, errorListener: Response.ErrorListener): JSONObject? {
+        return runJSONObjectRequest(Request.Method.POST,
+            "/scanner/log",
+            JSONObject("{\"log\":\"$log\"}"),
+            errorListener
+        )
+    }
 
     suspend fun login(badge: String, errorListener: Response.ErrorListener): JSONObject? {
         return runJSONObjectRequest(Request.Method.POST,
@@ -142,9 +159,13 @@ class Backend(context: Context, private val baseURL: String) {
             hashMapOf<String, String>("Authorization" to "Bearer $bearerToken"))
     }
 
+
+
     private fun getHeaders(extraHeaders: MutableMap<String, String>): MutableMap<String, String> {
+        val deviceId = DeviceManager.getInstance().getDeviceId()
         val headers = hashMapOf<String, String>()
         headers["x-api-key"] = apiKey
+        headers["x-deviceId"] = deviceId
         headers += extraHeaders
         return headers
     }

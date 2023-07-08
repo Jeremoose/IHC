@@ -1,5 +1,6 @@
 package com.novodin.ihc.adapters
 
+import android.graphics.Color
 import androidx.recyclerview.widget.RecyclerView
 import android.view.LayoutInflater
 import android.view.ViewGroup
@@ -42,7 +43,8 @@ class ArticleRecyclerViewAdapter(
         }
 
         if (position == selectedValuePosition) {
-            holder.itemView.setBackgroundColor(holder.itemView.context.getColor(R.color.selected_overlay))
+//            holder.itemView.setBackgroundColor(holder.itemView.context.getColor(R.color.selected_overlay))
+            holder.itemView.setBackgroundColor(Color.parseColor("#AED6F1"))
         } else {
             holder.itemView.setBackgroundColor(holder.itemView.context.getColor(R.color.white))
         }

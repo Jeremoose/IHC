@@ -6,17 +6,15 @@
 
     <TextView
         android:id="@+id/tvCompanyName"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_margin="@dimen/text_margin"
-        android:layout_weight="1"
-        android:textAppearance="@style/TextAppearance.AppCompat.Medium" />
+        android:layout_weight="0.6" />
 
     <TextView
         android:id="@+id/tvNumber"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_margin="@dimen/text_margin"
-        android:layout_weight="1"
-        android:textAppearance="@style/TextAppearance.AppCompat.Medium" />
+        android:layout_weight="0.4" />
 </LinearLayout>

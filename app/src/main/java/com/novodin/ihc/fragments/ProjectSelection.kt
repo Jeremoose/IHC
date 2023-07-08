@@ -234,6 +234,7 @@ class ProjectSelection(
                                     project.id,
                                     accessToken,
                                     backend))
+                            addToBackStack(null)
                             commit()
                         }
                     }

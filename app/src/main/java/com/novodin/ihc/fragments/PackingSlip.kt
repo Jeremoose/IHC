@@ -19,8 +19,10 @@ import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.RequiresApi
+import androidx.fragment.app.FragmentManager
 import androidx.recyclerview.widget.RecyclerView
 import com.novodin.ihc.R
+import com.novodin.ihc.SessionManager
 import com.novodin.ihc.adapters.ArticleRecyclerViewAdapter
 import com.novodin.ihc.adapters.PackingSlipItemRecyclerViewAdapter
 import com.novodin.ihc.config.Config
@@ -43,6 +45,7 @@ class PackingSlip(
     Fragment(R.layout.fragment_packing_slip) {
     private var intentFilter = IntentFilter()
     private val packingSlipItemList: MutableList<PackingSlipItem> = ArrayList()
+    private var selectedItemPosition: Int = -1
 
     private lateinit var rvPackingSlipItemList: RecyclerView
     private var dialog: AlertDialog? = null
@@ -91,7 +94,9 @@ class PackingSlip(
                         Log.d("PackingslipSelection:debug_unregister_catch",
                             "removefromcradletimeout unregister error: $e")
                     }
-                    requireActivity().supportFragmentManager.popBackStack()
+//                    requireActivity().supportFragmentManager.popBackStack()
+                    parentFragmentManager.popBackStack("standby",
+                        FragmentManager.POP_BACK_STACK_INCLUSIVE)
                 }
             }
         // setup passive user timeout
@@ -115,7 +120,9 @@ class PackingSlip(
                         Log.d("PackingslipSelection:debug_unregister_catch",
                             "passivetimeout unregister error: $e")
                     }
-                    requireActivity().supportFragmentManager.popBackStack()
+//                    requireActivity().supportFragmentManager.popBackStack()
+                    parentFragmentManager.popBackStack("standby",
+                        FragmentManager.POP_BACK_STACK_INCLUSIVE)
                 }
             }
     }
@@ -163,7 +170,9 @@ class PackingSlip(
 
         rvPackingSlipItemList = view.findViewById(R.id.rvPackingSlip) as RecyclerView
         rvPackingSlipItemList.adapter = PackingSlipItemRecyclerViewAdapter(packingSlipItemList)
-        (rvPackingSlipItemList.adapter as PackingSlipItemRecyclerViewAdapter).setOnItemSelectExtra { enableAddButton() }
+        (rvPackingSlipItemList.adapter as PackingSlipItemRecyclerViewAdapter).setOnItemSelectExtra {
+            enableAddButton()
+        }
 
 
         ibNavThree = view.findViewById(R.id.ibNavThree) as ImageButton
@@ -177,12 +186,33 @@ class PackingSlip(
 
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        val sessionId = SessionManager.getInstance().getSessionId()
+        if (sessionId != null) {
+            Log.d("PackingSlip:onDestroy sessionId = ", sessionId)
+        }
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        val sessionId = SessionManager.getInstance().getSessionId()
+        if (sessionId != null) {
+            Log.d("PackingSlip:onDestroyView sessionId = ", sessionId)
+        }
+    }
+
+
     private fun add() {
         val adapter = rvPackingSlipItemList.adapter as PackingSlipItemRecyclerViewAdapter
         val pos = adapter.selectedValuePosition
-
+        Log.d("PackingslipSelection:add", "selectedPos=$pos")
         if (pos == -1) return // return if nothing is selected
-
+        if (pos >= packingSlipItemList.size) {
+            Log.d("PackingslipSelection:add packingSlipItemList.size = ", packingSlipItemList.size.toString())
+            adapter.selectedValuePosition = -1
+            return // return if pos is out of range
+        }
         val packingSlipListItem = packingSlipItemList[pos]
 
         removeFromCradleTimeout.cancel()
@@ -201,7 +231,11 @@ class PackingSlip(
         packingSlipItemList.removeAt(pos)
         (requireContext() as Activity).runOnUiThread {
             adapter.notifyItemRemoved(pos)
+            rvPackingSlipItemList.scrollToPosition(0)
+            adapter.selectedValuePosition = -1
         }
+
+        disableAddButton()
     }
 
     private fun stop() {
@@ -216,7 +250,9 @@ class PackingSlip(
                     requireContext().unregisterReceiver(dockChangeReceiver)
                     backend.loginRelease(badge, accessToken)
                 }
-                requireActivity().supportFragmentManager.popBackStack()
+//                requireActivity().supportFragmentManager.popBackStack()
+                parentFragmentManager.popBackStack("standby",
+                    FragmentManager.POP_BACK_STACK_INCLUSIVE)
             }
             .setNegativeButton("No") { dialog, _ ->
                 dialog.dismiss()
@@ -232,10 +268,21 @@ class PackingSlip(
         Log.d("Packingslip::enableAddButton", "enter")
         Log.d("Packingslip::enableAddButton", ibNavFour.toString())
 
-        ibNavFour.isEnabled = true
-        ibNavFour.imageTintList = ColorStateList.valueOf(Color.WHITE)
-        textView6.setTextColor(colorPrimaryEnabled)
+        val adapter = rvPackingSlipItemList.adapter as PackingSlipItemRecyclerViewAdapter
+        val pos = adapter.selectedValuePosition
+        Log.d("PackingslipSelection:enableAddButton", "selectedPos=$pos")
+        if (pos != -1 && pos < packingSlipItemList.size) {
+            ibNavFour.isEnabled = true
+            ibNavFour.imageTintList = ColorStateList.valueOf(Color.WHITE)
+            textView6.setTextColor(colorPrimaryEnabled)
+        }
         resetPassiveTimeout()
+    }
+
+    private fun disableAddButton() {
+        ibNavFour.isEnabled = false
+        ibNavFour.imageTintList = ColorStateList.valueOf(colorPrimaryDisabled)
+        textView6.setTextColor(colorPrimaryDisabled)
     }
 
     private fun initNavButtons(view: View) {
@@ -291,7 +338,9 @@ class PackingSlip(
                     Log.d("ProjectSelection:debug_unregister_catch",
                         "battery_status_charging and unregistering receiver here error: $e")
                 }
-                requireActivity().supportFragmentManager.popBackStack()
+//                requireActivity().supportFragmentManager.popBackStack()
+                parentFragmentManager.popBackStack("standby",
+                    FragmentManager.POP_BACK_STACK_INCLUSIVE)
             }
 
             if (intent.action == "com.symbol.intent.device.UNDOCKED") {

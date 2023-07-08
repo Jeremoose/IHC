@@ -18,6 +18,7 @@ import androidx.fragment.app.setFragmentResult
 import com.android.volley.NoConnectionError
 import com.android.volley.TimeoutError
 import com.novodin.ihc.R
+import com.novodin.ihc.SessionManager
 import com.novodin.ihc.config.Config
 import com.novodin.ihc.model.Article
 import com.novodin.ihc.network.Backend
@@ -45,6 +46,7 @@ class Approval(
 
     // Approval variables
     private var accessToken: String = ""
+    private var userType: Int = 0
     private var approvalState: Boolean = false
     private var badge: String = ""
 
@@ -56,6 +58,7 @@ class Approval(
     private lateinit var runnable: Runnable
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        Log.d("Approval", "fun onCreate")
         super.onCreate(savedInstanceState)
         intentFilter.addAction("com.symbol.intent.device.DOCKED")
         requireContext().registerReceiver(dockChangeReceiver, intentFilter)
@@ -63,48 +66,61 @@ class Approval(
             object : CountDownTimer(Config.PassiveTimeoutShort.toLong(), Config.PassiveTimeoutShort.toLong()) {
                 override fun onTick(p0: Long) {}
                 override fun onFinish() {
-                    if (approvalState) {
-                        CoroutineScope(Dispatchers.IO).launch {
-                            backend.approve(cartId, accessToken, JSONArray(articleList))
+                    Log.d("Approval:onCreate:passiveTimeout:onFinish", "approvalState=$approvalState")
+                    val sessionActive = SessionManager.getInstance().getSessionState()
+                    if (sessionActive != null && sessionActive) {
+                        SessionManager.getInstance().setSessionState(false)
+                        if (approvalState) {
+                            CoroutineScope(Dispatchers.IO).launch {
+                                Log.d("Approval:onCreate:passiveTimeout:onFinish backend.approve ", "cartId=$cartId, accessToken=$accessToken")
+                                backend.approve(cartId, accessToken, JSONArray(articleList))
+                            }
+                            Toast.makeText(requireContext(),
+                                "Successfully approved",
+                                Toast.LENGTH_LONG)
+                                .show()
+                            // release the user
+                            CoroutineScope(Dispatchers.IO).launch {
+                                backend.loginRelease(badge!!, accessToken)
+                            }
                         }
-                        Toast.makeText(requireContext(),
-                            "Successfully approved",
-                            Toast.LENGTH_LONG)
-                            .show()
-                        // release the user
-                        CoroutineScope(Dispatchers.IO).launch {
-                            backend.loginRelease(badge!!, accessToken)
-                        }
-                    }
 
-                    try {
-                        requireContext().unregisterReceiver(dockChangeReceiver)
-                    } catch (e: IllegalArgumentException) {
-                        Log.d("Approval:debug_unregister_catch",
-                            "passivetimeout unregister error: $e")
-                    }
-                    runnable?.let { handler.removeCallbacks(it) }
-                    if (approvalState) {
-                        requireActivity().supportFragmentManager.popBackStack("standby",
-                            POP_BACK_STACK_INCLUSIVE)
-                    } else {
-                        requireActivity().supportFragmentManager.popBackStack()
+                        try {
+                            requireContext().unregisterReceiver(dockChangeReceiver)
+                        } catch (e: IllegalArgumentException) {
+                            Log.d("Approval:debug_unregister_catch",
+                                "passivetimeout unregister error: $e")
+                        }
+                        runnable?.let { handler.removeCallbacks(it) }
+
+                        if (approvalState) {
+//                            requireActivity().supportFragmentManager.popBackStack("standby",
+//                                POP_BACK_STACK_INCLUSIVE)
+                            parentFragmentManager.popBackStack("standby",
+                                POP_BACK_STACK_INCLUSIVE)
+                        } else {
+//                            requireActivity().supportFragmentManager.popBackStack()
+                            parentFragmentManager.popBackStack()
+                        }
                     }
                 }
             }
+        Log.d("Approval:onCreate", "start passivetimeout")
+        passiveTimeout.start()
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
         // Start timeout
-        passiveTimeout.start()
+//        passiveTimeout.start()
+//        Log.d("Approval:passiveTimeout", "passivetimeout start - onViewCreated")
         // reset timer when user clicks anywhere in screen
-        requireView().setOnClickListener {
-            passiveTimeout.cancel()
-            Log.d("Approval:passiveTimeout", "passivetimeout cancel - onViewCreated")
-            passiveTimeout.start()
-        }
+//        requireView().setOnClickListener {
+//            passiveTimeout.cancel()
+//            passiveTimeout.start()
+//            Log.d("Approval:passiveTimeout", "passivetimeout cancel / start - onViewCreated - setOnclickListener")
+//        }
 
         colorPrimaryDisabled =
             requireContext().getColor(com.google.android.material.R.color.material_on_primary_disabled)
@@ -141,7 +157,7 @@ class Approval(
                             }
                         }
                     }
-                    println("approver poll result")
+
                     try {
                         if (resp!!.getInt("type") == 1) {
                             (requireContext() as Activity).runOnUiThread {
@@ -156,14 +172,17 @@ class Approval(
                                         Toast.makeText(requireContext(), "Unknown badge number", Toast.LENGTH_LONG)
                                             .show()
                                     }
-                                    Log.d("Approval:loginResponse", loginResponse.toString())
+                                    Log.d("Approval:onViewCreated loginResponse = ", loginResponse.toString())
                                     accessToken = loginResponse!!.getString("accessToken")
-                                    val userType = loginResponse!!.getInt("type")
+                                    userType = loginResponse!!.getInt("type")
                                     resetPassiveTimeout()
-
-                                    setFragmentResult("approveLogin",
-                                        bundleOf(Pair("success", userType == 1),
-                                            Pair("accessToken", if (userType == 1) accessToken else "")))
+//                                    Log.d("Approval:onViewCreated", "cancel passiveTimeout" )
+//                                    passiveTimeout.cancel()
+//                                    setFragmentResult("approveLogin",
+//                                        bundleOf(Pair("success", userType == 1),
+//                                            Pair("accessToken", if (userType == 1) accessToken else "")))
+//                                    requireContext().unregisterReceiver(dockChangeReceiver)
+//                                    requireActivity().supportFragmentManager.popBackStack()
                                 }
 
                             }
@@ -184,18 +203,30 @@ class Approval(
 //                    Toast.makeText(requireContext(), "Unknown badge number", Toast.LENGTH_LONG)
 //                        .show()
 //                }
-//                Log.d("loginResponse", loginResponse.toString())
+//                Log.d("Approval:onViewCreated:ibNavFour.setOnClickListener loginResponse = ", loginResponse.toString())
 //                accessToken = loginResponse!!.getString("accessToken")
 //                val userType = loginResponse!!.getInt("type")
-//
+                passiveTimeout.cancel()
+                Log.d("Approval:onViewCreated:ibNavFour.setOnClickListener", "cancel passivetimeout")
 //                setFragmentResult("approveLogin",
 //                    bundleOf(Pair("success", userType == 1),
 //                        Pair("accessToken", if (userType == 1) accessToken else "")))
-                passiveTimeout.cancel()
-                Log.d("Approval:passiveTimeout", "passivetimeout cancel - ibNavFour.setOnClickListener")
+                setFragmentResult("approveLogin",
+                    bundleOf(Pair("success", userType == 1),
+                        Pair("accessToken", if (userType == 1) accessToken else ""),
+                        Pair("badge", if (userType == 1) badge else "")))
+
+
                 handler.removeCallbacks(runnable)
                 requireContext().unregisterReceiver(dockChangeReceiver)
-                requireActivity().supportFragmentManager.popBackStack()
+//                requireActivity().supportFragmentManager.popBackStack()
+
+                val log =  "confirm approval badge: $badge, accessToken: $accessToken"
+                backend.log(log) {
+                    Log.d("Approval:ibNavFour.setOnClickListener backend.log", "error: $it")
+                }
+
+                parentFragmentManager.popBackStack()
             }
         }
 
@@ -208,16 +239,33 @@ class Approval(
                 accessToken = loginResponse!!.getString("accessToken")
                 val userType = loginResponse!!.getInt("type")
 
+
+                passiveTimeout.cancel()
+                Log.d("Approval:onViewCreated:etBadgeNumber.onSubmit", "cancel passivetimeout")
+                requireContext().unregisterReceiver(dockChangeReceiver)
+//                requireActivity().supportFragmentManager.popBackStack()
+                parentFragmentManager.popBackStack()
                 setFragmentResult("approveLogin",
                     bundleOf(Pair("success", userType == 1),
-                        Pair("accessToken", if (userType == 1) accessToken else "")))
-                passiveTimeout.cancel()
-                Log.d("Approval:passiveTimeout", "passivetimeout cancel - etBadgeNumber.onSubmit")
-                requireContext().unregisterReceiver(dockChangeReceiver)
-                requireActivity().supportFragmentManager.popBackStack()
-
-
+                        Pair("accessToken", if (userType == 1) accessToken else ""),
+                        Pair("badge", if (userType == 1) etBadgeNumber.text.toString() else "")))
             }
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        val sessionId = SessionManager.getInstance().getSessionId()
+        if (sessionId != null) {
+            Log.d("Approval:onDestroy sessionId = ", sessionId)
+        }
+    }
+
+    override fun onDestroyView() {
+        super.onDestroyView()
+        val sessionId = SessionManager.getInstance().getSessionId()
+        if (sessionId != null) {
+            Log.d("Approval:onDestroyView sessionId = ", sessionId)
         }
     }
 
@@ -287,9 +335,14 @@ class Approval(
                 // 3. stop passive timeout
                 // 4. unregister receiver
                 // 5. pop backstack
+                Log.d("Approval:dockChangeReceiver", "approvalState=$approvalState")
+                SessionManager.getInstance().setSessionState(false)
+                Log.d("Approval:dockChangeReceiver", "cancel passivetimeout")
                 passiveTimeout.cancel()
                 if (approvalState) {
+                    approvalState = false
                     CoroutineScope(Dispatchers.IO).launch {
+                        Log.d("Approval:dockChangeReceiver backend.approve ", "cartId=$cartId, accessToken=$accessToken")
                         backend.approve(cartId, accessToken, JSONArray(articleList))
                     }
                     Toast.makeText(requireContext(),
@@ -299,6 +352,7 @@ class Approval(
                 }
                 badge?.let {
                     CoroutineScope(Dispatchers.IO).launch {
+                        Log.d("Approval:dockChangeReceiver loginRelease badge = ", badge)
                         backend.loginRelease(badge!!, accessToken)
                     }
                 }
@@ -312,12 +366,14 @@ class Approval(
                         "battery_status_charging and unregistering receiver here error: $e")
                 }
                 handler.removeCallbacks(runnable)
-                requireActivity().supportFragmentManager.popBackStack("standby", POP_BACK_STACK_INCLUSIVE)
+//                requireActivity().supportFragmentManager.popBackStack("standby", POP_BACK_STACK_INCLUSIVE)
+                parentFragmentManager.popBackStack("standby", POP_BACK_STACK_INCLUSIVE)
             }
         }
     }
 
     private fun resetPassiveTimeout() {
+        Log.d("Approval:passiveTimeout", "passivetimeout resetPassiveTimeout()")
         passiveTimeout.cancel()
         passiveTimeout.start()
     }

@@ -2,22 +2,22 @@ package com.novodin.ihc.fragments
 
 import android.app.Activity
 import android.app.AlertDialog
+import android.content.Context
+import android.content.SharedPreferences
 import android.os.Bundle
+import android.os.Debug
 import android.os.Handler
 import android.os.Looper
-import android.text.InputType
 import android.util.Base64
 import android.util.Log
 import android.view.Gravity
 import android.view.View
-import android.view.WindowManager
 import android.widget.*
-import android.widget.Toast
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.lifecycleScope
+import androidx.fragment.app.FragmentManager
 import com.novodin.ihc.R
+import com.novodin.ihc.SessionManager
 import com.novodin.ihc.config.Config
-import com.novodin.ihc.model.PackingSlipItem
 import com.novodin.ihc.model.Project
 import com.novodin.ihc.network.Backend
 import com.novodin.ihc.zebra.BarcodeScanner
@@ -27,9 +27,9 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONException
+import java.util.*
 import java.util.regex.Pattern
-import android.content.SharedPreferences
-import android.content.Context
+
 
 private var dialog: AlertDialog? = null
 
@@ -50,8 +50,13 @@ class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
     // Barcode scanner
     private lateinit var barcodeScanner: BarcodeScanner
 
+    private val healthHandler = Handler(Looper.getMainLooper())
+    private val healthRunnable = Runnable { callHealthFunction() }
+    private val inactivityTimeout: Long = 1 * 60 * 60 * 1000 // 1 hour in milliseconds
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        Log.d("StandbyScreen", "onCreate")
         super.onCreate(savedInstanceState)
 //        intentFilter.addAction(Intent.ACTION_BATTERY_CHANGED)
 
@@ -207,9 +212,29 @@ class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        Log.d("StandbyScreen", "onViewCreated")
         super.onViewCreated(view, savedInstanceState)
         ivStandby = view.findViewById(R.id.ivStandby) as ImageView
         ivStandby.setImageResource(R.drawable.ic_standby_screen)
+
+        val log = getMemoryInfo()
+        try {
+            CoroutineScope(Dispatchers.IO).launch {
+                backend.log(log) {
+                    Log.d("StandbyScreen:onViewCreated", "error backend.log: $it")
+                }
+            }
+        } catch (e: JSONException){
+            Log.d("StandbyScreen:onViewCreated", "error health API: $e")
+        }
+
+        // Get the FragmentManager
+        val fragmentManager = requireActivity().supportFragmentManager
+
+        // Clear all fragments from the back stack
+        while (fragmentManager.backStackEntryCount > 0) {
+            fragmentManager.popBackStackImmediate()
+        }
 
         val delay = 1000 // 1000 milliseconds == 1 second
 
@@ -240,9 +265,26 @@ class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
         }
 
         handler.postDelayed(runnable, delay.toLong())
+        resetHealthTimer()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Restart the timer when the fragment is resumed
+        resetHealthTimer()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // Stop the timer when the fragment is paused
+        stopHealthTimer()
     }
 
     private fun goToShoppingCart(accessToken: String, projects: JSONArray, badge: String) {
+
+        val uuid = UUID.randomUUID()
+        SessionManager.getInstance().setSessionId(uuid.toString())
+        SessionManager.getInstance().setSessionState(true)
         cradle.unlock()
         handler.removeCallbacks(runnable)
         val projectsArrayList = ArrayList<Project>()
@@ -264,6 +306,9 @@ class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
     }
 
     private fun goToFiller(badge: String, accessToken: String, packingSlipItems: JSONArray) {
+        val uuid = UUID.randomUUID()
+        SessionManager.getInstance().setSessionId(uuid.toString())
+        SessionManager.getInstance().setSessionState(true)
         cradle.unlock()
         handler.removeCallbacks(runnable)
         Log.d("filler:unlocked", packingSlipItems.toString())
@@ -286,17 +331,47 @@ class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
         }
     }
 
-//    private fun goToFillerFragment(badge: String, accessToken: String) {
-//        lifecycleScope.launchWhenResumed {
-//            parentFragmentManager.beginTransaction().apply {
-//                barcodeScanner.onClosed()
-//                replace(R.id.flFragment,
-//                    Filler(badge, accessToken, backend))
-//                addToBackStack("standby")
-//                commit()
-//            }
-//        }
-//    }
+    private fun getMemoryInfo(): String {
+        val runtime = Runtime.getRuntime()
+        val usedMemory = runtime.totalMemory() - runtime.freeMemory()
+
+        val debugMemoryInfo = Debug.MemoryInfo()
+        Debug.getMemoryInfo(debugMemoryInfo)
+
+        val heapSize = debugMemoryInfo.totalPrivateDirty
+        val nativeHeapSize = debugMemoryInfo.nativePrivateDirty
+
+        return "Used Memory: $usedMemory bytes\n" +
+                "Heap Size: $heapSize KB\n" +
+                "Native Heap Size: $nativeHeapSize KB"
+    }
+
+    private fun resetHealthTimer() {
+        // Cancel any pending healthRunnable and start a new timer
+        healthHandler.removeCallbacks(healthRunnable)
+        healthHandler.postDelayed(healthRunnable, inactivityTimeout)
+    }
+
+    private fun stopHealthTimer() {
+        // Cancel the healthRunnable if it is still pending
+        healthHandler.removeCallbacks(healthRunnable)
+    }
+
+    private fun callHealthFunction() {
+        val memoryInfo = getMemoryInfo()
+        try {
+            CoroutineScope(Dispatchers.IO).launch {
+                backend.health(memoryInfo) {
+                    Log.d("StandbyScreen:callHealthFunction", "error backend.health: $it")
+                }
+            }
+        } catch (e: JSONException){
+            Log.d("StandbyScreen:callHealthFunction", "error health API: $e")
+        }
+
+        // Restart the timer after the call is made
+        resetHealthTimer()
+    }
 
     class SharedPreferencesHelper(context: Context) {
         companion object {
