@@ -6,13 +6,11 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.os.BatteryManager
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.util.Log
 import androidx.fragment.app.Fragment
 import android.view.View
-import android.view.ViewTreeObserver
 import android.view.WindowManager
 import android.widget.ImageButton
 import android.widget.TextView
@@ -31,7 +29,6 @@ import org.json.JSONArray
 import android.util.Base64
 import androidx.fragment.app.FragmentManager
 import com.novodin.ihc.SessionManager
-import org.json.JSONException
 
 class ShoppingCart(
     private var badge: String,
@@ -347,7 +344,6 @@ class ShoppingCart(
             tvNavFour.setTextColor(colorPrimaryDisabled)
         }
     }
-
     private fun statusCallback(message: String) {
         println(message)
     }

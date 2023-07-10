@@ -23,10 +23,8 @@ import androidx.fragment.app.FragmentManager
 import androidx.recyclerview.widget.RecyclerView
 import com.novodin.ihc.R
 import com.novodin.ihc.SessionManager
-import com.novodin.ihc.adapters.ArticleRecyclerViewAdapter
 import com.novodin.ihc.adapters.PackingSlipItemRecyclerViewAdapter
 import com.novodin.ihc.config.Config
-import com.novodin.ihc.model.Article
 import com.novodin.ihc.model.PackingSlipItem
 import com.novodin.ihc.network.Backend
 import kotlinx.coroutines.CoroutineScope

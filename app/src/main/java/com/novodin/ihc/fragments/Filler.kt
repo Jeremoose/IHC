@@ -6,7 +6,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.graphics.Color
 import android.os.*
 import android.util.Log
 import android.view.View
@@ -221,6 +220,7 @@ class Filler(
         tvUnitCount.text = unitCount.toString()
 
         rvArticleList.adapter = ArticleRecyclerViewAdapter(articleList)
+        (rvArticleList.adapter as ArticleRecyclerViewAdapter).setOnItemAddedExtra { enablePlusMinus() }
 
         tvAdding = view.findViewById(R.id.tvAdding) as TextView
         tvLabelAdding = view.findViewById(R.id.tvLabelAdding) as TextView
@@ -252,6 +252,7 @@ class Filler(
                             }
                         }
                     }
+                    btnAdding = 0
                     isCompleted = true
                     CoroutineScope(Dispatchers.IO).launch {
                         backend.loginRelease(badge, accessToken)
@@ -269,6 +270,7 @@ class Filler(
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
             dialog!!.show()
         }
+//        enablePlusMinus()
     }
 
     override fun onResume() {
@@ -325,11 +327,11 @@ class Filler(
         // First nav button
         (view.findViewById(R.id.ibNavOne) as ImageButton).apply {
             this.setImageResource(R.drawable.ic_minus)
-            this.isEnabled = true
+            this.isEnabled = false
         }
         (view.findViewById(R.id.textView7) as TextView).apply {
             this.text = "Remove"
-            this.setTextColor(colorPrimaryEnabled)
+            this.setTextColor(colorPrimaryDisabled)
         }
 
         // Second nav button
@@ -357,25 +359,34 @@ class Filler(
         // Fourth nav button
         (view.findViewById(R.id.ibNavFour) as ImageButton).apply {
             this.setImageResource(R.drawable.ic_plus)
-            this.isEnabled = true
+            this.isEnabled = false
         }
         (view.findViewById(R.id.textView10) as TextView).apply {
             this.text = "Add"
-            this.setTextColor(colorPrimaryEnabled)
+            this.setTextColor(colorPrimaryDisabled)
         }
     }
-
 
     private fun enablePlusMinus() {
         if (!(ibRemove.isEnabled || ibAdd.isEnabled)) {
             ibRemove.isEnabled = true
-//            ibRemove.setColorFilter(Color.WHITE)
             tvRemove.setTextColor(colorPrimaryEnabled)
             ibAdd.isEnabled = true
-//            ibAdd.setColorFilter(Color.WHITE)
             tvAdd.setTextColor(colorPrimaryEnabled)
         }
     }
+//    private fun enablePlusMinus() {
+//        Log.d("Filler:enablePlusMinus ", "enter")
+//        if (!(ibRemove.isEnabled || ibAdd.isEnabled)) {
+//            Log.d("Filler:enablePlusMinus ", "setEnabled")
+//            ibRemove.isEnabled = true
+////            ibRemove.setColorFilter(Color.WHITE)
+//            tvRemove.setTextColor(colorPrimaryEnabled)
+//            ibAdd.isEnabled = true
+////            ibAdd.setColorFilter(Color.WHITE)
+//            tvAdd.setTextColor(colorPrimaryEnabled)
+//        }
+//    }
 
     private fun disablePlusMinus() {
         if (ibRemove.isEnabled || ibAdd.isEnabled) {
@@ -414,7 +425,6 @@ class Filler(
 
     private fun onBarcodeScanData(barcode: String) {
         resetPassiveTimeout()
-
         CoroutineScope(Dispatchers.IO).launch {
 
             val b64encodedBarcode = Base64.encodeToString(barcode.toByteArray(), Base64.DEFAULT)
