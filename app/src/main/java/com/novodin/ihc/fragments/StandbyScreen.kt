@@ -218,15 +218,19 @@ class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
         ivStandby.setImageResource(R.drawable.ic_standby_screen)
 
         val log = getMemoryInfo()
-        try {
-            CoroutineScope(Dispatchers.IO).launch {
+
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
                 backend.log(log) {
                     Log.d("StandbyScreen:onViewCreated", "error backend.log: $it")
                 }
+            } catch (e: JSONException){
+                Log.d("StandbyScreen:onViewCreated backend.log error", "$e")
+            } catch (e: Exception) {
+                Log.d("StandbyScreen:onViewCreated backend.log error ", "$e")
             }
-        } catch (e: JSONException){
-            Log.d("StandbyScreen:onViewCreated", "error health API: $e")
         }
+
 
         // Get the FragmentManager
         val fragmentManager = requireActivity().supportFragmentManager
@@ -241,24 +245,42 @@ class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
         runnable = object : Runnable {
             override fun run() {
                 CoroutineScope(Dispatchers.IO).launch {
-                    val resp = backend.pollLogin {
-                        println("poll error")
-                        println(it)
-//                        Toast.makeText(requireContext(), "Something went wrong", Toast.LENGTH_LONG)
-//                            .show()
-                    }
                     try {
-                        when (resp!!.getInt("type")) {
-                            0 -> goToShoppingCart(resp.getString("accessToken"),
-                                resp.getJSONArray("projects"),
-                                resp.getString("badge"))
-                            1 -> println("is an approver")
-                            2 -> goToFiller(resp.getString("badge"),
-                                resp.getString("accessToken"),
-                                resp.getJSONArray("packingslips"))
+                        val resp = backend.pollLogin {
+                            Log.d("StandbyScreen:onViewCreated runnable ", "error pollLogin API: $it")
+                        }
+
+                        if (resp != null) {
+                            if (resp.length() != 0) {
+                                if (resp.has("type")) {
+                                    when (resp.getInt("type")) {
+                                        0 -> {
+                                            val accessToken = resp.getString("accessToken")
+                                            val projects = if (resp.has("projects")) resp.getJSONArray("projects") else JSONArray()
+//                                            val projects = if (resp.has("projects") && resp.getJSONObject("projects").length() > 0) {
+//                                                resp.getJSONArray("projects")
+//                                            } else {
+//                                                JSONArray()
+//                                            }
+                                            val badge = resp.getString("badge")
+                                            goToShoppingCart(accessToken, projects, badge)
+                                        }
+                                        1 -> println("is an approver")
+                                        2 -> {
+                                            val badge = resp.getString("badge")
+                                            val accessToken = resp.getString("accessToken")
+                                            val packingSlips = if (resp.has("packingslips")) resp.getJSONArray("packingslips") else JSONArray()
+                                            goToFiller(badge, accessToken, packingSlips)
+                                        }
+                                    }
+                                }
+                            }
                         }
                     } catch (e: JSONException) {
-                    }
+                        Log.d("StandbyScreen:onViewCreated runnable backend.pollLogin error ", "$e")
+                    }  catch (e: Exception) {
+                        Log.d("StandbyScreen:onViewCreated runnable backend.pollLogin error ", "$e")
+                }
                 }
                 handler.postDelayed(this, delay.toLong())
             }
@@ -359,15 +381,18 @@ class StandbyScreen() : Fragment(R.layout.fragment_standby_screen) {
 
     private fun callHealthFunction() {
         val memoryInfo = getMemoryInfo()
-        try {
-            CoroutineScope(Dispatchers.IO).launch {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
                 backend.health(memoryInfo) {
                     Log.d("StandbyScreen:callHealthFunction", "error backend.health: $it")
                 }
+            } catch (e: JSONException) {
+                Log.d("SStandbyScreen:callHealthFunction backend.health error ", "$e")
+            } catch (e: Exception) {
+                Log.d("StandbyScreen:callHealthFunction backend.health error ", "$e")
             }
-        } catch (e: JSONException){
-            Log.d("StandbyScreen:callHealthFunction", "error health API: $e")
         }
+
 
         // Restart the timer after the call is made
         resetHealthTimer()

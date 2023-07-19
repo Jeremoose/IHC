@@ -37,7 +37,6 @@ class PackingSlip(
     private var accessToken: String,
     private var backend: Backend,
     private var badge: String,
-//    private val packingSlipItemList: ArrayList<PackingSlipItem>,
     private val packingSlipItems: JSONArray,
 ) :
     Fragment(R.layout.fragment_packing_slip) {
@@ -92,7 +91,6 @@ class PackingSlip(
                         Log.d("PackingslipSelection:debug_unregister_catch",
                             "removefromcradletimeout unregister error: $e")
                     }
-//                    requireActivity().supportFragmentManager.popBackStack()
                     parentFragmentManager.popBackStack("standby",
                         FragmentManager.POP_BACK_STACK_INCLUSIVE)
                 }
@@ -118,9 +116,14 @@ class PackingSlip(
                         Log.d("PackingslipSelection:debug_unregister_catch",
                             "passivetimeout unregister error: $e")
                     }
-//                    requireActivity().supportFragmentManager.popBackStack()
                     parentFragmentManager.popBackStack("standby",
                         FragmentManager.POP_BACK_STACK_INCLUSIVE)
+                    val log =  "PackingSlip passivetimeout, badge $badge "
+                    CoroutineScope(Dispatchers.IO).launch {
+                        backend.log(log) {
+                            Log.d("Packingslip:passivetimeout backend.log", "error: $it")
+                        }
+                    }
                 }
             }
     }
@@ -155,9 +158,9 @@ class PackingSlip(
                         Filler(badge!!,
                             accessToken,
                             backend, true))
+                    addToBackStack("packingslip")
                     commit()
                 }
-//                goToFillerFragment(badge, accessToken)
             }
         dialog = builder.create()
         dialog!!.window?.setFlags(WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
@@ -248,7 +251,6 @@ class PackingSlip(
                     requireContext().unregisterReceiver(dockChangeReceiver)
                     backend.loginRelease(badge, accessToken)
                 }
-//                requireActivity().supportFragmentManager.popBackStack()
                 parentFragmentManager.popBackStack("standby",
                     FragmentManager.POP_BACK_STACK_INCLUSIVE)
             }

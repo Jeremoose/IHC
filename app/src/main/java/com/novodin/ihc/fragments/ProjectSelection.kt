@@ -109,6 +109,12 @@ class ProjectSelection(
                             "passivetimeout unregister error: $e")
                     }
                     requireActivity().supportFragmentManager.popBackStack()
+                    val log =  "ProjectSelection passivetimeout, badge $badge "
+                    CoroutineScope(Dispatchers.IO).launch {
+                        backend.log(log) {
+                            Log.d("ProjectSelection:passivetimeout backend.log", "error: $it")
+                        }
+                    }
                 }
             }
     }
@@ -118,7 +124,7 @@ class ProjectSelection(
 
         // Start timeouts
         removeFromCradleTimeout.start()
-//        passiveTimeout.start()
+
         // reset timer when user clicks anywhere in screen
         view.setOnClickListener {
             resetPassiveTimeout()

@@ -6,6 +6,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.graphics.Color
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.util.Log
@@ -27,8 +28,10 @@ import com.novodin.ihc.zebra.BarcodeScanner
 import kotlinx.coroutines.*
 import org.json.JSONArray
 import android.util.Base64
+import android.view.Gravity
 import androidx.fragment.app.FragmentManager
 import com.novodin.ihc.SessionManager
+import org.json.JSONException
 
 class ShoppingCart(
     private var badge: String,
@@ -94,53 +97,71 @@ class ShoppingCart(
             object : CountDownTimer(Config.PassiveTimeoutLong.toLong(), Config.PassiveTimeoutLong.toLong()) {
                 override fun onTick(p0: Long) {}
                 override fun onFinish() {
-                    Log.d("ShoppingCart:passivetimeout:onFinish", "timer onFinish")
-                    Log.d("ShoppingCart:passivetimeout:onFinish isApproved = ", isApproved.toString())
-                    Log.d("ShoppingCart:passivetimeout:onFinish approvalState = ", approvalState.toString())
-                    Log.d("ShoppingCart:passivetimeout:onFinish shoppingSessionId = ", shoppingSessionId)
 
                     val sessionActive = SessionManager.getInstance().getSessionState()
                     val sessionId = SessionManager.getInstance().getSessionId()
                     if (sessionId != null) {
                         Log.d("ShoppingCart:passivetimeout:onFinish sessionId = ", sessionId)
-                    }
-                    Log.d("ShoppingCart:passivetimeout:onFinish sessionActive = ", sessionActive.toString())
+                        Log.d("ShoppingCart:passivetimeout:onFinish shoppingSessionId = ", shoppingSessionId)
+                        if (sessionId.equals(shoppingSessionId)) {
 
-                    if (sessionId.equals(shoppingSessionId)) {
-
-                        SessionManager.getInstance().setSessionState(false)
-                        if (!isApproved) {
-                            if (approvalState) {
-                                barcodeScanner.onClosed()
-                                CoroutineScope(Dispatchers.IO).launch {
-                                    backend.approve(cartId, accessToken, JSONArray(articleList))
+                            SessionManager.getInstance().setSessionState(false)
+                            if (!isApproved) {
+                                if (approvalState) {
+                                    barcodeScanner.onClosed()
+                                    CoroutineScope(Dispatchers.IO).launch {
+                                        try {
+                                            backend.approve(cartId, accessToken)
+                                        } catch (e: JSONException) {
+                                            Log.d("ShoppingCart:passivetimeout backend.approve error ", "$e")
+                                        } catch (e: Exception) {
+                                            Log.d("ShoppingCart:passivetimeout backend.approve error ", "$e")
+                                        }
+                                    }
+                                    Toast.makeText(requireContext(),
+                                        "Successfully approved",
+                                        Toast.LENGTH_LONG)
+                                        .show()
                                 }
-                                Toast.makeText(requireContext(),
-                                    "Successfully approved",
-                                    Toast.LENGTH_LONG)
-                                    .show()
+
+                                // release the user
+                                CoroutineScope(Dispatchers.IO).launch {
+                                    Log.d("ShoppingCart:passivetimeout:onFinish release user with badge = ",
+                                        badge)
+                                    try {
+                                        backend.loginRelease(badge!!, accessToken)
+                                    } catch (e: JSONException) {
+                                        Log.d("ShoppingCart:passivetimeout backend.loginRelease error ", "$e")
+                                    } catch (e: Exception) {
+                                        Log.d("ShoppingCart:passivetimeout backend.loginRelease error ", "$e")
+                                    }
+
+                                }
                             }
 
-                            // release the user
-                            CoroutineScope(Dispatchers.IO).launch {
-                                Log.d("ShoppingCart:passivetimeout:onFinish release user with badge = ", badge)
-                                backend.loginRelease(badge!!, accessToken)
+                            try {
+                                dialog?.cancel()
+                                requireContext().unregisterReceiver(dockChangeReceiver)
+                            } catch (e: IllegalArgumentException) {
+                                Log.d("ShoppingCart:debug_unregister_catch",
+                                    "passivetimeout unregister error: $e")
+                            }
+                            parentFragmentManager.popBackStack("standby",
+                                FragmentManager.POP_BACK_STACK_INCLUSIVE)
+
+                        }
+                        val log =  "Shoppingcart $cartId passivetimeout, badge $badge sessionId: $sessionId, shoppingSessionId: $shoppingSessionId"
+                        CoroutineScope(Dispatchers.IO).launch {
+                            try {
+                                backend.log(log) {
+                                    Log.d("Shoppingcart:passivetimeout backend.log", "error: $it")
+                                }
+                            } catch (e: JSONException) {
+                                Log.d("ShoppingCart:passivetimeout backend.log error ", "$e")
+                            } catch (e: Exception) {
+                                Log.d("ShoppingCart:passivetimeout backend.log error ", "$e")
                             }
                         }
-
-                        try {
-                            dialog?.cancel()
-                            requireContext().unregisterReceiver(dockChangeReceiver)
-                        } catch (e: IllegalArgumentException) {
-                            Log.d("ShoppingCart:debug_unregister_catch",
-                                "passivetimeout unregister error: $e")
-                        }
-
-//                        requireActivity().supportFragmentManager.popBackStack("standby",
-//                            FragmentManager.POP_BACK_STACK_INCLUSIVE)
-                        parentFragmentManager.popBackStack("standby",
-                            FragmentManager.POP_BACK_STACK_INCLUSIVE)
-
                     }
                 }
             }
@@ -169,8 +190,14 @@ class ShoppingCart(
                 resetPassiveTimeout()
                 val log =  "enter shoppingcart with approval badge: $badge, accessToken: $accessToken"
                 CoroutineScope(Dispatchers.IO).launch {
-                    backend.log(log) {
-                        Log.d("Shoppingcart:ibNavFour.setOnClickListener backend.log", "error: $it")
+                    try {
+                        backend.log(log) {
+                            Log.d("Shoppingcart:onCreate.setOnClickListener backend.log error ", "error: $it")
+                        }
+                    } catch (e: JSONException) {
+                        Log.d("ShoppingCart:onCreate backend.log error ", "$e")
+                    } catch (e: Exception) {
+                        Log.d("ShoppingCart:onCreate backend.log error ", "$e")
                     }
                 }
             } catch (e: NullPointerException) {
@@ -178,8 +205,14 @@ class ShoppingCart(
             }
         }
         CoroutineScope(Dispatchers.IO).launch {
-            val cartIdResponse = backend.createCart(projectId, accessToken)
-            cartId = cartIdResponse!!.getInt("id")
+            try {
+                val cartIdResponse = backend.createCart(projectId, accessToken)
+                cartId = cartIdResponse!!.getInt("id")
+            } catch (e: JSONException) {
+                Log.d("ShoppingCart:onCreate backend.createCart error ", "$e")
+            } catch (e: Exception) {
+                Log.d("ShoppingCart:onCreate backend.createCart error ", "$e")
+            }
         }
     }
 
@@ -367,51 +400,69 @@ class ShoppingCart(
 
         val b64encodedBarcode = Base64.encodeToString(barcode.toByteArray(), Base64.DEFAULT)
         CoroutineScope(Dispatchers.IO).launch {
-            val item = backend.addItem(cartId, b64encodedBarcode, accessToken) {
-                Toast.makeText(requireContext(), "Unknown barcode", Toast.LENGTH_LONG).show()
-            }
+            try {
+                val item = backend.addItem(cartId, b64encodedBarcode, accessToken) {
+                    Log.d("ShoppingCart:dataCallback ", "Unknown barcode")
+                    val toast =
+                        Toast.makeText(requireContext(), "Unknown barcode", Toast.LENGTH_LONG)
+                    val toastView = toast.view
+                    val textView = toastView?.findViewById<TextView>(android.R.id.message)
+                    textView?.textSize = 28f
+                    textView?.setTextColor(Color.RED)
+                    toast.setGravity(Gravity.CENTER, 0, 0)
+                    toast.show()
+                }
+                if (item != null) {
 
+                    Log.d("ShoppingCart:dataCallback ", "item is known ")
+                    val article = Article(item!!.getInt("id"),
+                        barcode,
+                        item.getString("name"),
+                        item.getString("number"),
+                        QuantityType.fromInt(item.getInt("cat")),
+                        1)
 
-            val article = Article(item!!.getInt("id"),
-                barcode,
-                item.getString("name"),
-                item.getString("number"),
-                QuantityType.fromInt(item.getInt("cat")),
-                1)
+                    val adapter = rvArticleList.adapter as ArticleRecyclerViewAdapter
 
-            val adapter = rvArticleList.adapter as ArticleRecyclerViewAdapter
-
-            var alreadyExisted = false
-            for ((i, art) in articleList.withIndex()) {
-                if (art.id == article.id) {
-                    alreadyExisted = true
-                    article.count = articleList[i].count +1
-                    articleList.removeAt(i)
-                    articleList.add(0,article)
-                    (requireContext() as Activity).runOnUiThread {
-                        adapter.notifyItemRemoved(i)
-                        adapter.notifyItemInserted(0)
-                        rvArticleList.scrollToPosition(0)
+                    var alreadyExisted = false
+                    for ((i, art) in articleList.withIndex()) {
+                        if (art.id == article.id) {
+                            alreadyExisted = true
+                            article.count = articleList[i].count + 1
+                            articleList.removeAt(i)
+                            articleList.add(0, article)
+                            (requireContext() as Activity).runOnUiThread {
+                                adapter.notifyItemRemoved(i)
+                                adapter.notifyItemInserted(0)
+                                rvArticleList.scrollToPosition(0)
+                            }
+                            break
+                        }
                     }
-                    break
-                }
-            }
 
-            if (!alreadyExisted) {
-                Log.d("article-add-debug: article", article.toString())
-                Log.d("article-add-debug: articleList before :", articleList.toString())
-                articleList.add(0,article)
-                Log.d("article-add-debug: articleList after :", articleList.toString())
-                (requireContext() as Activity).runOnUiThread {
-                    adapter.notifyItemInserted(0)
-                    rvArticleList.scrollToPosition(0)
-                }
-            }
+                    if (!alreadyExisted) {
+                        Log.d("article-add-debug: article", article.toString())
+                        Log.d("article-add-debug: articleList before :", articleList.toString())
+                        articleList.add(0, article)
+                        Log.d("article-add-debug: articleList after :", articleList.toString())
+                        (requireContext() as Activity).runOnUiThread {
+                            adapter.notifyItemInserted(0)
+                            rvArticleList.scrollToPosition(0)
+                        }
+                    }
 
-            when (article.quantityType) {
-                QuantityType.ITEM -> tvItemCount.text = (++itemCount).toString()
-                QuantityType.PU -> tvPUCount.text = (++puCount).toString()
-                QuantityType.UNIT -> tvUnitCount.text = (++unitCount).toString()
+                    when (article.quantityType) {
+                        QuantityType.ITEM -> tvItemCount.text = (++itemCount).toString()
+                        QuantityType.PU -> tvPUCount.text = (++puCount).toString()
+                        QuantityType.UNIT -> tvUnitCount.text = (++unitCount).toString()
+                    }
+                }
+            } catch (e: JSONException) {
+                // Handle JSON parsing error
+                Log.d("ShoppingCart:dataCallback backend.addItem error ", "$e")
+            } catch (e: Exception) {
+                // Handle other exceptions
+                Log.d("ShoppingCart:dataCallback backend.addItem error ", "$e")
             }
         }
     }
@@ -427,11 +478,17 @@ class ShoppingCart(
         // add item in backend
         val b64encodedBarcode = Base64.encodeToString(article.barcode.toByteArray(), Base64.DEFAULT)
         CoroutineScope(Dispatchers.IO).launch {
-            backend.addItem(cartId,
-                b64encodedBarcode,
-                accessToken
-            ) {
-                Toast.makeText(requireContext(), "Unkown barcode", Toast.LENGTH_LONG).show()
+            try {
+                backend.addItem(cartId,
+                    b64encodedBarcode,
+                    accessToken
+                ) {
+                    Toast.makeText(requireContext(), "Something went wrong", Toast.LENGTH_LONG).show()
+                }
+            } catch (e: JSONException) {
+                Log.d("ShoppingCart:add backend.addItem error ", "$e")
+            } catch (e: Exception) {
+                Log.d("ShoppingCart:add backend.addItem error ", "$e")
             }
         }
 
@@ -455,9 +512,15 @@ class ShoppingCart(
 
         // Remove item in backend
         CoroutineScope(Dispatchers.IO).launch {
-            backend.removeItem(cartId,
-                article.id,
-                accessToken)
+            try {
+                backend.removeItem(cartId,
+                    article.id,
+                    accessToken)
+            } catch (e: JSONException) {
+                Log.d("ShoppingCart:remove backend.removeItem error ", "$e")
+            } catch (e: Exception) {
+                Log.d("ShoppingCart:remove backend.removeItem error ", "$e")
+            }
         }
 
         // Remove item in UI
@@ -491,21 +554,28 @@ class ShoppingCart(
                     Log.d("ShoppingCart:stop", "cancel passivetimeout, approvalState = true")
                     requireContext().unregisterReceiver(dockChangeReceiver)
                     CoroutineScope(Dispatchers.IO).launch {
-                        backend.approve(cartId, accessToken, JSONArray(articleList))
+                        try {
+                            backend.approve(cartId, accessToken)
+                        } catch (e: JSONException) {
+                            Log.d("ShoppingCart:stop backend.approve error ", "$e")
+                        } catch (e: Exception) {
+                            Log.d("ShoppingCart:stop backend.approve error ", "$e")
+                        }
                     }
                     Log.d("ShoppingCart:stop release user with badge = ", badge)
                     badge?.let {
                         CoroutineScope(Dispatchers.IO).launch {
-
-                            backend.loginRelease(badge!!, accessToken)
+                            try {
+                                backend.loginRelease(badge!!, accessToken)
+                            } catch (e: JSONException) {
+                                Log.d("ShoppingCart:stop release user error ", "$e")
+                            } catch (e: Exception) {
+                                Log.d("ShoppingCart:stop release user error ", "$e")
+                            }
                         }
                     }
                     Toast.makeText(requireContext(), "Successfully approved", Toast.LENGTH_LONG)
                         .show()
-                    // TODO figure out why at this popbackstack, the fragment doesn't finish its lifecycle
-//                    requireActivity().supportFragmentManager.popBackStack()
-//                    requireActivity().supportFragmentManager.popBackStack("standby",
-//                        FragmentManager.POP_BACK_STACK_INCLUSIVE)
                     parentFragmentManager.popBackStack("standby",
                         FragmentManager.POP_BACK_STACK_INCLUSIVE)
                 }
@@ -528,7 +598,13 @@ class ShoppingCart(
                         requireContext().unregisterReceiver(dockChangeReceiver)
                         CoroutineScope(Dispatchers.IO).launch {
                             Log.d("ShoppingCart:stop release user with badge = ", badge)
-                            backend.loginRelease(badge, accessToken)
+                            try {
+                                backend.loginRelease(badge, accessToken)
+                            } catch (e: JSONException) {
+                                Log.d("ShoppingCart:stop backend.loginRelease error ", "$e")
+                            } catch (e: Exception) {
+                                Log.d("ShoppingCart:stop backend.loginRelease error ", "$e")
+                            }
                         }
                         replace(R.id.flFragment, Approval(backend, cartId, articleList))
                         addToBackStack("shoppingcart")
@@ -566,7 +642,13 @@ class ShoppingCart(
                     badge?.let {
                         CoroutineScope(Dispatchers.IO).launch {
                             Log.d("ShoppingCart:dockChangeReceiver release user with badge = ", badge)
-                            backend.loginRelease(badge!!, accessToken)
+                            try {
+                                backend.loginRelease(badge!!, accessToken)
+                            } catch (e: JSONException) {
+                                Log.d("ShoppingCart:dockChangeReceiver release user error = ", "$e")
+                            } catch (e: Exception) {
+                                Log.d("ShoppingCart:dockChangeReceiver release user error = ", "$e")
+                            }
                         }
                     }
 
@@ -574,7 +656,13 @@ class ShoppingCart(
                         approvalState = false
                         CoroutineScope(Dispatchers.IO).launch {
                             Log.d("Approval:dockChangeReceiver backend.approve ", "cartId=$cartId, accessToken=$accessToken")
-                            backend.approve(cartId, accessToken, JSONArray(articleList))
+                            try {
+                                backend.approve(cartId, accessToken)
+                            } catch (e: JSONException) {
+                                Log.d("ShoppingCart:dockChangeReceiver approve error = ", "$e")
+                            } catch (e: Exception) {
+                                Log.d("ShoppingCart:dockChangeReceiver approve error = ", "$e")
+                            }
                         }
                         Toast.makeText(requireContext(),
                             "Successfully approved",
@@ -592,12 +680,9 @@ class ShoppingCart(
                     requireContext().unregisterReceiver(this)
 
                 } catch (e: IllegalArgumentException) {
-                    Log.d("ProjectSelection:debug_unregister_catch",
+                    Log.d("ShoppingCart:debug_unregister_catch",
                         "battery_status_charging and unregistering receiver here error: $e")
                 }
-//                requireActivity().supportFragmentManager.popBackStack()
-//                requireActivity().supportFragmentManager.popBackStack("standby",
-//                    FragmentManager.POP_BACK_STACK_INCLUSIVE)
                 parentFragmentManager.popBackStack("standby",
                     FragmentManager.POP_BACK_STACK_INCLUSIVE)
             }

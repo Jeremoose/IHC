@@ -40,7 +40,6 @@ class ArticleRecyclerViewAdapter(
         holder.itemView.setOnClickListener {
             selectedValuePosition = position
             onItemSelectExtra.invoke()
-//            notifyItemChanged(position)
             notifyDataSetChanged()
         }
 
@@ -50,7 +49,6 @@ class ArticleRecyclerViewAdapter(
         }
 
         if (position == selectedValuePosition) {
-//            holder.itemView.setBackgroundColor(holder.itemView.context.getColor(R.color.selected_overlay))
             holder.itemView.setBackgroundColor(Color.parseColor("#AED6F1"))
         } else {
             holder.itemView.setBackgroundColor(holder.itemView.context.getColor(R.color.white))

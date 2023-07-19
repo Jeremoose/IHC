@@ -6,6 +6,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.graphics.Color
 import android.os.*
 import android.util.Log
 import android.view.View
@@ -26,9 +27,9 @@ import com.novodin.ihc.zebra.BarcodeScanner
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import java.lang.Runnable
 import kotlin.math.abs
 import android.util.Base64
+import android.view.Gravity
 import androidx.fragment.app.FragmentManager
 import com.novodin.ihc.SessionManager
 
@@ -48,7 +49,6 @@ class Filler(
     private lateinit var barcodeScanner: BarcodeScanner
 
     // Filler variables
-    private lateinit var scanTimeout: Runnable
     private val articleList: MutableList<Article> = ArrayList()
     private var selectedArticle: Article? = null
     private var adding: Int = 0
@@ -66,9 +66,6 @@ class Filler(
     private lateinit var tvAdding: TextView
     private lateinit var tvLabelAdding: TextView
     private lateinit var tvNewTotal: TextView
-    private lateinit var tvArticleName: TextView
-    private lateinit var tvArticleNumber: TextView
-    private lateinit var tvQuantityType: TextView
     private lateinit var ibAdd: ImageButton
     private lateinit var ibRemove: ImageButton
     private lateinit var ibStop: ImageButton
@@ -109,35 +106,49 @@ class Filler(
                     Config.PassiveRemoveFromCradleTimeout.toLong()) {
                 override fun onTick(p0: Long) {}
                 override fun onFinish() {
-                    isCompleted = true
-                    if (btnAdding != 0) {
-                        CoroutineScope(Dispatchers.IO).launch {
-                            val b64encodedBarcodeSelected = Base64.encodeToString(selectedArticle!!.barcode.toByteArray(), Base64.DEFAULT)
-                            backend.setFillerItem(b64encodedBarcodeSelected, btnAdding.toString(), accessToken) {
-                                Toast.makeText(requireContext(), "Updating the database failed", Toast.LENGTH_LONG)
-                                    .show()
+                    val sessionId = SessionManager.getInstance().getSessionId()
+                    if (sessionId != null) {
+                        Log.d("Filler:passivetimeout:onFinish sessionId = ", sessionId)
+                        Log.d("Filler:passivetimeout:onFinish fillerSessionId = ", fillerSessionId)
+                        if (sessionId.equals(fillerSessionId)) {
+
+                            SessionManager.getInstance().setSessionState(false)
+                            isCompleted = true
+                            if (btnAdding != 0) {
+                                CoroutineScope(Dispatchers.IO).launch {
+                                    val b64encodedBarcodeSelected = Base64.encodeToString(
+                                        selectedArticle!!.barcode.toByteArray(),
+                                        Base64.DEFAULT)
+                                    backend.setFillerItem(b64encodedBarcodeSelected,
+                                        btnAdding.toString(),
+                                        accessToken) {
+                                        Toast.makeText(requireContext(),
+                                            "Updating the database failed",
+                                            Toast.LENGTH_LONG)
+                                            .show()
+                                    }
+                                }
                             }
+                            // release the user if the user has already been identified
+                            badge?.let {
+                                CoroutineScope(Dispatchers.IO).launch {
+                                    backend.loginRelease(badge!!, accessToken)
+                                }
+                            }
+                            passiveTimeout.cancel()
+                            dialog?.cancel()
+
+                            try {
+                                requireContext().unregisterReceiver(dockChangeReceiver)
+
+                            } catch (e: IllegalArgumentException) {
+                                Log.d("Filler:debug_unregister_catch",
+                                    "removefromcradletimeout unregister error: $e")
+                            }
+                            parentFragmentManager.popBackStack("standby",
+                                FragmentManager.POP_BACK_STACK_INCLUSIVE)
                         }
                     }
-                    // release the user if the user has already been identified
-                    badge?.let {
-                        CoroutineScope(Dispatchers.IO).launch {
-                            backend.loginRelease(badge!!, accessToken)
-                        }
-                    }
-                    passiveTimeout.cancel()
-                    dialog?.cancel()
-
-                    try {
-                        requireContext().unregisterReceiver(dockChangeReceiver)
-
-                    } catch (e: IllegalArgumentException) {
-                        Log.d("Filler:debug_unregister_catch",
-                            "removefromcradletimeout unregister error: $e")
-                    }
-//                    requireActivity().supportFragmentManager.popBackStack()
-                    parentFragmentManager.popBackStack("standby",
-                        FragmentManager.POP_BACK_STACK_INCLUSIVE)
                 }
             }
         // setup passive user timeout
@@ -150,43 +161,50 @@ class Filler(
                     val sessionId = SessionManager.getInstance().getSessionId()
                     if (sessionId != null) {
                         Log.d("Filler:passivetimeout:onFinish sessionId = ", sessionId)
-                    }
-                    if (sessionId.equals(fillerSessionId)) {
-                        if (btnAdding != 0) {
-                            CoroutineScope(Dispatchers.IO).launch {
-                                val b64encodedBarcodeSelected = Base64.encodeToString(
-                                    selectedArticle!!.barcode.toByteArray(),
-                                    Base64.DEFAULT)
-                                backend.setFillerItem(b64encodedBarcodeSelected,
-                                    btnAdding.toString(),
-                                    accessToken) {
-                                    Toast.makeText(requireContext(),
-                                        "Updating the database failed",
-                                        Toast.LENGTH_LONG)
-                                        .show()
+                        Log.d("Filler:passivetimeout:onFinish fillerSessionId = ", fillerSessionId)
+                        if (sessionId.equals(fillerSessionId)) {
+                            if (btnAdding != 0) {
+                                CoroutineScope(Dispatchers.IO).launch {
+                                    val b64encodedBarcodeSelected = Base64.encodeToString(
+                                        selectedArticle!!.barcode.toByteArray(),
+                                        Base64.DEFAULT)
+                                    backend.setFillerItem(b64encodedBarcodeSelected,
+                                        btnAdding.toString(),
+                                        accessToken) {
+                                        Toast.makeText(requireContext(),
+                                            "Updating the database failed",
+                                            Toast.LENGTH_LONG)
+                                            .show()
+                                    }
                                 }
                             }
-                        }
-                        // release the user if the user has already been identified
-                        badge?.let {
-                            CoroutineScope(Dispatchers.IO).launch {
-                                backend.loginRelease(badge!!, accessToken)
+                            // release the user if the user has already been identified
+                            badge?.let {
+                                CoroutineScope(Dispatchers.IO).launch {
+                                    backend.loginRelease(badge!!, accessToken)
+                                }
                             }
-                        }
-                        removeFromCradleTimeout.cancel()
-                        dialog?.cancel()
-                        Log.d("Filler:onCreate", "passivetimeout unregister")
-                        try {
-                            requireContext().unregisterReceiver(dockChangeReceiver)
-                            parentFragmentManager.popBackStack("standby",
-                                FragmentManager.POP_BACK_STACK_INCLUSIVE)
+                            removeFromCradleTimeout.cancel()
+                            dialog?.cancel()
+                            Log.d("Filler:onCreate", "passivetimeout unregister")
+                            try {
+                                requireContext().unregisterReceiver(dockChangeReceiver)
+                                parentFragmentManager.popBackStack("standby",
+                                    FragmentManager.POP_BACK_STACK_INCLUSIVE)
 
-                        } catch (e: IllegalArgumentException) {
-                            Log.d("Filler:unregisterReceiver",
-                                "error: $e")
-                        } catch (e2: IllegalStateException) {
-                            Log.d("Filler:unregisterReceiver",
-                                "error: $e2")
+                            } catch (e: IllegalArgumentException) {
+                                Log.d("Filler:unregisterReceiver",
+                                    "error: $e")
+                            } catch (e2: IllegalStateException) {
+                                Log.d("Filler:unregisterReceiver",
+                                    "error: $e2")
+                            }
+                            val log =  "Filler passivetimeout, badge $badge "
+                            CoroutineScope(Dispatchers.IO).launch {
+                                backend.log(log) {
+                                    Log.d("Filler:passivetimeout backend.log", "error: $it")
+                                }
+                            }
                         }
                     }
                 }
@@ -250,9 +268,10 @@ class Filler(
                                 Toast.makeText(requireContext(), "Updating the database failed", Toast.LENGTH_LONG)
                                     .show()
                             }
+                            btnAdding = 0
                         }
                     }
-                    btnAdding = 0
+
                     isCompleted = true
                     CoroutineScope(Dispatchers.IO).launch {
                         backend.loginRelease(badge, accessToken)
@@ -260,6 +279,15 @@ class Filler(
                     passiveTimeout.cancel()
                     parentFragmentManager.popBackStack("standby",
                         FragmentManager.POP_BACK_STACK_INCLUSIVE)
+                    try {
+                        requireContext().unregisterReceiver(dockChangeReceiver)
+                    } catch (e: IllegalArgumentException) {
+                        Log.d("Filler:ibStop unregisterReceiver",
+                            "error: $e")
+                    } catch (e2: IllegalStateException) {
+                        Log.d("Filler:ibStop unregisterReceiver",
+                            "error: $e2")
+                    }
                 }
                 .setNegativeButton("No") { dialog, _ ->
                     resetPassiveTimeout()
@@ -270,7 +298,6 @@ class Filler(
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
             dialog!!.show()
         }
-//        enablePlusMinus()
     }
 
     override fun onResume() {
@@ -375,18 +402,7 @@ class Filler(
             tvAdd.setTextColor(colorPrimaryEnabled)
         }
     }
-//    private fun enablePlusMinus() {
-//        Log.d("Filler:enablePlusMinus ", "enter")
-//        if (!(ibRemove.isEnabled || ibAdd.isEnabled)) {
-//            Log.d("Filler:enablePlusMinus ", "setEnabled")
-//            ibRemove.isEnabled = true
-////            ibRemove.setColorFilter(Color.WHITE)
-//            tvRemove.setTextColor(colorPrimaryEnabled)
-//            ibAdd.isEnabled = true
-////            ibAdd.setColorFilter(Color.WHITE)
-//            tvAdd.setTextColor(colorPrimaryEnabled)
-//        }
-//    }
+
 
     private fun disablePlusMinus() {
         if (ibRemove.isEnabled || ibAdd.isEnabled) {
@@ -429,7 +445,14 @@ class Filler(
 
             val b64encodedBarcode = Base64.encodeToString(barcode.toByteArray(), Base64.DEFAULT)
             val item = backend.getFillerItem(b64encodedBarcode, accessToken) {
-                Toast.makeText(requireContext(), "Unknown barcode", Toast.LENGTH_LONG).show()
+//                Toast.makeText(requireContext(), "Unknown barcode", Toast.LENGTH_LONG).show()
+                val toast = Toast.makeText(requireContext(), "Unknown barcode", Toast.LENGTH_LONG)
+                val toastView = toast.view
+                val textView = toastView?.findViewById<TextView>(android.R.id.message)
+                textView?.textSize = 28f
+                textView?.setTextColor(Color.RED)
+                toast.setGravity(Gravity.CENTER, 0, 0)
+                toast.show()
             }
             val article = Article(item!!.getInt("id"),
                 barcode,
@@ -525,38 +548,43 @@ class Filler(
         @RequiresApi(Build.VERSION_CODES.Q)
         override fun onReceive(context: Context?, intent: Intent) {
             Log.d("Filler:dockChangeReceiver", "action: ${intent.action}")
-            val sessionId = SessionManager.getInstance().getSessionId()
-            if (sessionId != null) {
-                Log.d("Filler:dockChangeReceiver:onReceive sessionId = ", sessionId)
-                Log.d("Filler:dockChangeReceiver:onReceive fillerSessionId = ", fillerSessionId)
-            }
-            if (sessionId.equals(fillerSessionId) && !isCompleted) {
-                if (intent.action == "com.symbol.intent.device.DOCKED") {
-                    // 1. update database with added items
-                    // 2. release user
-                    // 3. stop cradletimeout
-                    // 4. stop passive timeout
-                    // 5. unregister receiver
-                    // 6. pop backstack
-                    if (btnAdding != 0) {
-                        CoroutineScope(Dispatchers.IO).launch {
-                            val b64encodedBarcodeSelected =
-                                Base64.encodeToString(selectedArticle!!.barcode.toByteArray(),
-                                    Base64.DEFAULT)
-                            backend.setFillerItem(b64encodedBarcodeSelected,
-                                btnAdding.toString(),
-                                accessToken) {
-                                Toast.makeText(requireContext(),
-                                    "Updating the database failed",
-                                    Toast.LENGTH_LONG)
-                                    .show()
+            if (intent.action == "com.symbol.intent.device.DOCKED") {
+                // 1. update database with added items
+                // 2. release user
+                // 3. stop cradletimeout
+                // 4. stop passive timeout
+                // 5. unregister receiver
+                // 6. pop backstack
+                val sessionId = SessionManager.getInstance().getSessionId()
+                if (sessionId != null) {
+                    Log.d("Filler:dockChangeReceiver:onReceive sessionId = ", sessionId)
+                    Log.d("Filler:dockChangeReceiver:onReceive fillerSessionId = ", fillerSessionId)
+                }
+                if (sessionId.equals(fillerSessionId)) {
+                    if (!isCompleted) {
+                        isCompleted = true
+                        if (btnAdding != 0) {
+                            CoroutineScope(Dispatchers.IO).launch {
+                                val b64encodedBarcodeSelected =
+                                    Base64.encodeToString(selectedArticle!!.barcode.toByteArray(),
+                                        Base64.DEFAULT)
+                                backend.setFillerItem(b64encodedBarcodeSelected,
+                                    btnAdding.toString(),
+                                    accessToken) {
+                                    Toast.makeText(requireContext(),
+                                        "Updating the database failed",
+                                        Toast.LENGTH_LONG)
+                                        .show()
+                                }
                             }
                         }
-                    }
-                    badge?.let {
-                        CoroutineScope(Dispatchers.IO).launch {
-                            backend.loginRelease(badge!!, accessToken)
+                        badge?.let {
+                            CoroutineScope(Dispatchers.IO).launch {
+                                backend.loginRelease(badge!!, accessToken)
+                            }
                         }
+                        parentFragmentManager.popBackStack("standby",
+                            FragmentManager.POP_BACK_STACK_INCLUSIVE)
                     }
                     removeFromCradleTimeout.cancel()
                     passiveTimeout.cancel()
@@ -564,8 +592,8 @@ class Filler(
                     Log.d("Filler:passiveTimeout", "passivetimeout cancel - dockChangeReceiver")
                     try {
                         requireContext().unregisterReceiver(this)
-                        parentFragmentManager.popBackStack("standby",
-                            FragmentManager.POP_BACK_STACK_INCLUSIVE)
+                        //                        parentFragmentManager.popBackStack("standby",
+                        //                            FragmentManager.POP_BACK_STACK_INCLUSIVE)
                     } catch (e: IllegalArgumentException) {
                         Log.d("Filler:unregisterReceiver",
                             "error: $e")
@@ -575,7 +603,14 @@ class Filler(
                     }
                 }
 
-                if (intent.action == "com.symbol.intent.device.UNDOCKED") {
+            }
+            if (intent.action == "com.symbol.intent.device.UNDOCKED") {
+                val sessionId = SessionManager.getInstance().getSessionId()
+                if (sessionId != null) {
+                    Log.d("Filler:dockChangeReceiver:UNDOCKED sessionId = ", sessionId)
+                    Log.d("Filler:dockChangeReceiver:UNDOCKED fillerSessionId = ", fillerSessionId)
+                }
+                if (sessionId.equals(fillerSessionId)) {
                     // 1. stop cradle timeout
                     // 2. start passive timeout
                     removeFromCradleTimeout.cancel()

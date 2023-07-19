@@ -112,14 +112,10 @@ class Backend(context: Context, private val baseURL: String) {
             hashMapOf<String, String>("Authorization" to "Bearer $bearerToken"))
     }
 
-    suspend fun approve(
-        cartId: Int,
-        bearerToken: String,
-        shoppingCartArticlesJSON: JSONArray,
-    ): JSONArray? {
-        return runJSONArrayRequest(Request.Method.POST,
+    suspend fun approve(cartId: Int, bearerToken: String): JSONObject? {
+        return runJSONObjectRequest(Request.Method.POST,
             "/api/cart/$cartId/approve",
-            shoppingCartArticlesJSON,
+            null,
             { error -> error.printStackTrace() },
             hashMapOf<String, String>("Authorization" to "Bearer $bearerToken"))
     }
@@ -191,6 +187,26 @@ class Backend(context: Context, private val baseURL: String) {
         }
     }
 
+//    private suspend fun runJSONArrayRequest(
+//        method: Int,
+//        api: String,
+//        payload: JSONArray?,
+//        errorListener: Response.ErrorListener,
+//        extraHeaders: MutableMap<String, String> = hashMapOf<String, String>(),
+//    ): JSONArray? {
+//        return suspendCancellableCoroutine {
+//            val request = object : JsonArrayRequest(method,
+//                "$baseURL$api",
+//                payload,
+//                { resp -> it.resumeWith(Result.success(resp)) },
+//                errorListener) {
+//                override fun getHeaders(): MutableMap<String, String> {
+//                    return this@Backend.getHeaders(extraHeaders)
+//                }
+//            }
+//            requestQueue.add(request)
+//        }
+//    }
     private suspend fun runJSONArrayRequest(
         method: Int,
         api: String,
@@ -198,12 +214,17 @@ class Backend(context: Context, private val baseURL: String) {
         errorListener: Response.ErrorListener,
         extraHeaders: MutableMap<String, String> = hashMapOf<String, String>(),
     ): JSONArray? {
-        return suspendCancellableCoroutine {
+        return suspendCancellableCoroutine { continuation ->
             val request = object : JsonArrayRequest(method,
                 "$baseURL$api",
                 payload,
-                { resp -> it.resumeWith(Result.success(resp)) },
-                errorListener) {
+                { resp ->
+                    continuation.resumeWith(Result.success(resp))
+                },
+                { error ->
+                    error.printStackTrace()
+                    continuation.resumeWith(Result.failure(error))
+                }) {
                 override fun getHeaders(): MutableMap<String, String> {
                     return this@Backend.getHeaders(extraHeaders)
                 }
@@ -211,6 +232,7 @@ class Backend(context: Context, private val baseURL: String) {
             requestQueue.add(request)
         }
     }
+
 
 
 }
